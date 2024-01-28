@@ -2,7 +2,7 @@ package condition
 
 import (
 	"codnect.io/procyon-core/container"
-	"codnect.io/procyon-core/env"
+	"codnect.io/procyon-core/runtime/env"
 )
 
 type Evaluator interface {

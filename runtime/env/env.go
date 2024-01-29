@@ -1,7 +1,7 @@
 package env
 
 import (
-	property2 "codnect.io/procyon-core/runtime/env/property"
+	"codnect.io/procyon-core/runtime/env/property"
 	"fmt"
 	"strings"
 	"sync"
@@ -20,16 +20,16 @@ type Environment interface {
 	Merge(parent Environment)
 
 	Variables() Variables
-	PropertySources() *property2.Sources
-	PropertyResolver() property2.Resolver
+	PropertySources() *property.Sources
+	PropertyResolver() property.Resolver
 }
 
 type environment struct {
 	activeProfiles  map[string]struct{}
 	defaultProfiles map[string]struct{}
 
-	sources             *property2.Sources
-	resolver            property2.Resolver
+	sources             *property.Sources
+	resolver            property.Resolver
 	activeProfilesOnce  sync.Once
 	defaultProfilesOnce sync.Once
 	resolverOnce        sync.Once
@@ -37,10 +37,10 @@ type environment struct {
 }
 
 func New() Environment {
-	return WithSources(property2.NewPropertySources())
+	return WithSources(property.NewPropertySources())
 }
 
-func WithSources(sources *property2.Sources) Environment {
+func WithSources(sources *property.Sources) Environment {
 	if sources == nil {
 		panic(fmt.Errorf("env: sources cannot be nil"))
 	}
@@ -241,16 +241,16 @@ func (e *environment) Variables() Variables {
 	return nil
 }
 
-func (e *environment) PropertySources() *property2.Sources {
+func (e *environment) PropertySources() *property.Sources {
 	return e.sources
 }
 
-func (e *environment) PropertyResolver() property2.Resolver {
+func (e *environment) PropertyResolver() property.Resolver {
 	defer e.mu.Unlock()
 	e.mu.Lock()
 
 	if e.resolver == nil {
-		e.resolver = property2.NewSourcesResolver(e.sources)
+		e.resolver = property.NewSourcesResolver(e.sources)
 	}
 
 	return e.resolver

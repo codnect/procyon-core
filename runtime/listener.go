@@ -20,11 +20,11 @@ type StartupListener interface {
 
 type startupListener struct {
 	app         Application
-	args        *Arguments
+	args        Arguments
 	broadcaster event.Broadcaster
 }
 
-func newStartupListener(app Application, args *Arguments) *startupListener {
+func newStartupListener(app Application, args Arguments) *startupListener {
 	return &startupListener{
 		app:         app,
 		args:        args,

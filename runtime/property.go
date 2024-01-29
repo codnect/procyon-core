@@ -9,10 +9,10 @@ const (
 )
 
 type ArgumentsPropertySource struct {
-	args Arguments
+	args *Arguments
 }
 
-func NewPropertySource(args Arguments) *ArgumentsPropertySource {
+func NewPropertySource(args *Arguments) *ArgumentsPropertySource {
 	return &ArgumentsPropertySource{
 		args: args,
 	}

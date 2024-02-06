@@ -1,5 +1,5 @@
 package runtime
 
 type Application interface {
-	Run(args ...string)
+	Run(args ...string) error
 }

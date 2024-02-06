@@ -8,7 +8,7 @@ import (
 
 func init() {
 	// runtime
-	component.Register(newStartupListener, component.Name("procyonStartupListener"))
+	//component.Register(newStartupListener, component.Name("procyonStartupListener"))
 	component.Register(newEnvironmentCustomizer, component.Name("procyonEnvironmentCustomizer"))
 	//component.Register(NewDefaultLifecycleProcessor, component.Name("lifecycleProcessor")).
 	//	ConditionalOn(condition.OnMissing("lifecycleProcessor"))

@@ -1,7 +1,7 @@
 package availability
 
 import (
-	"codnect.io/procyon-core/event"
+	"codnect.io/procyon-core/runtime/event"
 	"codnect.io/reflector"
 	"context"
 	"reflect"

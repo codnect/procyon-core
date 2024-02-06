@@ -12,8 +12,8 @@ type StartingEvent struct {
 	time time.Time
 }
 
-func newStartingEvent(app Application, args *Arguments, ctx Context) *StartingEvent {
-	return &StartingEvent{
+func Starting(app Application, args *Arguments, ctx Context) StartingEvent {
+	return StartingEvent{
 		app:  app,
 		ctx:  ctx,
 		args: args,
@@ -21,23 +21,23 @@ func newStartingEvent(app Application, args *Arguments, ctx Context) *StartingEv
 	}
 }
 
-func (e *StartingEvent) EventSource() any {
+func (e StartingEvent) EventSource() any {
 	return e.app
 }
 
-func (e *StartingEvent) Time() time.Time {
+func (e StartingEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *StartingEvent) Args() *Arguments {
+func (e StartingEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *StartingEvent) Application() Application {
+func (e StartingEvent) Application() Application {
 	return e.app
 }
 
-func (e *StartingEvent) Context() Context {
+func (e StartingEvent) Context() Context {
 	return e.ctx
 }
 
@@ -49,8 +49,8 @@ type EnvironmentPreparedEvent struct {
 	time        time.Time
 }
 
-func newEnvironmentPreparedEvent(app Application, args *Arguments, ctx Context, environment env.Environment) *EnvironmentPreparedEvent {
-	return &EnvironmentPreparedEvent{
+func EnvironmentPrepared(app Application, args *Arguments, ctx Context, environment env.Environment) EnvironmentPreparedEvent {
+	return EnvironmentPreparedEvent{
 		app:         app,
 		ctx:         ctx,
 		args:        args,
@@ -59,27 +59,27 @@ func newEnvironmentPreparedEvent(app Application, args *Arguments, ctx Context, 
 	}
 }
 
-func (e *EnvironmentPreparedEvent) EventSource() any {
+func (e EnvironmentPreparedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *EnvironmentPreparedEvent) Time() time.Time {
+func (e EnvironmentPreparedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *EnvironmentPreparedEvent) Args() *Arguments {
+func (e EnvironmentPreparedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *EnvironmentPreparedEvent) Application() Application {
+func (e EnvironmentPreparedEvent) Application() Application {
 	return e.app
 }
 
-func (e *EnvironmentPreparedEvent) Context() Context {
+func (e EnvironmentPreparedEvent) Context() Context {
 	return e.ctx
 }
 
-func (e *EnvironmentPreparedEvent) Environment() env.Environment {
+func (e EnvironmentPreparedEvent) Environment() env.Environment {
 	return e.environment
 }
 
@@ -90,8 +90,8 @@ type ContextPreparedEvent struct {
 	time time.Time
 }
 
-func newContextPreparedEvent(app Application, args *Arguments, ctx Context) *ContextPreparedEvent {
-	return &ContextPreparedEvent{
+func NewContextPreparedEvent(app Application, args *Arguments, ctx Context) ContextPreparedEvent {
+	return ContextPreparedEvent{
 		app:  app,
 		ctx:  ctx,
 		args: args,
@@ -99,23 +99,23 @@ func newContextPreparedEvent(app Application, args *Arguments, ctx Context) *Con
 	}
 }
 
-func (e *ContextPreparedEvent) EventSource() any {
+func (e ContextPreparedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *ContextPreparedEvent) Time() time.Time {
+func (e ContextPreparedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *ContextPreparedEvent) Args() *Arguments {
+func (e ContextPreparedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *ContextPreparedEvent) Application() Application {
+func (e ContextPreparedEvent) Application() Application {
 	return e.app
 }
 
-func (e *ContextPreparedEvent) Context() Context {
+func (e ContextPreparedEvent) Context() Context {
 	return e.ctx
 }
 
@@ -126,8 +126,8 @@ type ContextLoadedEvent struct {
 	time time.Time
 }
 
-func newContextLoadedEvent(app Application, args *Arguments, ctx Context) *ContextLoadedEvent {
-	return &ContextLoadedEvent{
+func ContextLoaded(app Application, args *Arguments, ctx Context) ContextLoadedEvent {
+	return ContextLoadedEvent{
 		app:  app,
 		ctx:  ctx,
 		args: args,
@@ -135,23 +135,23 @@ func newContextLoadedEvent(app Application, args *Arguments, ctx Context) *Conte
 	}
 }
 
-func (e *ContextLoadedEvent) EventSource() any {
+func (e ContextLoadedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *ContextLoadedEvent) Time() time.Time {
+func (e ContextLoadedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *ContextLoadedEvent) Args() *Arguments {
+func (e ContextLoadedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *ContextLoadedEvent) Application() Application {
+func (e ContextLoadedEvent) Application() Application {
 	return e.app
 }
 
-func (e *ContextLoadedEvent) Context() Context {
+func (e ContextLoadedEvent) Context() Context {
 	return e.ctx
 }
 
@@ -162,8 +162,8 @@ type ContextStartedEvent struct {
 	time time.Time
 }
 
-func newContextStartedEvent(app Application, args *Arguments, ctx Context) *ContextStartedEvent {
-	return &ContextStartedEvent{
+func ContextStarted(app Application, args *Arguments, ctx Context) ContextStartedEvent {
+	return ContextStartedEvent{
 		app:  app,
 		ctx:  ctx,
 		args: args,
@@ -171,23 +171,23 @@ func newContextStartedEvent(app Application, args *Arguments, ctx Context) *Cont
 	}
 }
 
-func (e *ContextStartedEvent) EventSource() any {
+func (e ContextStartedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *ContextStartedEvent) Time() time.Time {
+func (e ContextStartedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *ContextStartedEvent) Args() *Arguments {
+func (e ContextStartedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *ContextStartedEvent) Application() Application {
+func (e ContextStartedEvent) Application() Application {
 	return e.app
 }
 
-func (e *ContextStartedEvent) Context() Context {
+func (e ContextStartedEvent) Context() Context {
 	return e.ctx
 }
 
@@ -199,8 +199,8 @@ type StartedEvent struct {
 	timeTaken time.Duration
 }
 
-func newStartedEvent(app Application, args *Arguments, ctx Context, timeTaken time.Duration) *StartedEvent {
-	return &StartedEvent{
+func Started(app Application, args *Arguments, ctx Context, timeTaken time.Duration) StartedEvent {
+	return StartedEvent{
 		app:       app,
 		ctx:       ctx,
 		args:      args,
@@ -209,27 +209,27 @@ func newStartedEvent(app Application, args *Arguments, ctx Context, timeTaken ti
 	}
 }
 
-func (e *StartedEvent) EventSource() any {
+func (e StartedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *StartedEvent) Time() time.Time {
+func (e StartedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *StartedEvent) Args() *Arguments {
+func (e StartedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *StartedEvent) Application() Application {
+func (e StartedEvent) Application() Application {
 	return e.app
 }
 
-func (e *StartedEvent) Context() Context {
+func (e StartedEvent) Context() Context {
 	return e.ctx
 }
 
-func (e *StartedEvent) TimeTaken() time.Duration {
+func (e StartedEvent) TimeTaken() time.Duration {
 	return e.timeTaken
 }
 
@@ -241,8 +241,8 @@ type ReadyEvent struct {
 	timeTaken time.Duration
 }
 
-func newReadyEvent(app Application, args *Arguments, ctx Context, timeTaken time.Duration) *ReadyEvent {
-	return &ReadyEvent{
+func Ready(app Application, args *Arguments, ctx Context, timeTaken time.Duration) ReadyEvent {
+	return ReadyEvent{
 		app:       app,
 		ctx:       ctx,
 		args:      args,
@@ -251,27 +251,27 @@ func newReadyEvent(app Application, args *Arguments, ctx Context, timeTaken time
 	}
 }
 
-func (e *ReadyEvent) EventSource() any {
+func (e ReadyEvent) EventSource() any {
 	return e.app
 }
 
-func (e *ReadyEvent) Time() time.Time {
+func (e ReadyEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *ReadyEvent) Args() *Arguments {
+func (e ReadyEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *ReadyEvent) Application() Application {
+func (e ReadyEvent) Application() Application {
 	return e.app
 }
 
-func (e *ReadyEvent) Context() Context {
+func (e ReadyEvent) Context() Context {
 	return e.ctx
 }
 
-func (e *ReadyEvent) TimeTaken() time.Duration {
+func (e ReadyEvent) TimeTaken() time.Duration {
 	return e.timeTaken
 }
 
@@ -283,8 +283,8 @@ type FailedEvent struct {
 	err  error
 }
 
-func newFailedEvent(app Application, args *Arguments, ctx Context, err error) *FailedEvent {
-	return &FailedEvent{
+func Failed(app Application, args *Arguments, ctx Context, err error) FailedEvent {
+	return FailedEvent{
 		app:  app,
 		ctx:  ctx,
 		args: args,
@@ -293,26 +293,26 @@ func newFailedEvent(app Application, args *Arguments, ctx Context, err error) *F
 	}
 }
 
-func (e *FailedEvent) EventSource() any {
+func (e FailedEvent) EventSource() any {
 	return e.app
 }
 
-func (e *FailedEvent) Time() time.Time {
+func (e FailedEvent) Time() time.Time {
 	return e.time
 }
 
-func (e *FailedEvent) Args() *Arguments {
+func (e FailedEvent) Args() *Arguments {
 	return e.args
 }
 
-func (e *FailedEvent) Application() Application {
+func (e FailedEvent) Application() Application {
 	return e.app
 }
 
-func (e *FailedEvent) Context() Context {
+func (e FailedEvent) Context() Context {
 	return e.ctx
 }
 
-func (e *FailedEvent) Err() error {
+func (e FailedEvent) Err() error {
 	return e.err
 }

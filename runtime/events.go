@@ -191,6 +191,30 @@ func (e ContextStartedEvent) Context() Context {
 	return e.ctx
 }
 
+type ContextClosedEvent struct {
+	ctx  Context
+	time time.Time
+}
+
+func ContextClosed(ctx Context) ContextClosedEvent {
+	return ContextClosedEvent{
+		ctx:  ctx,
+		time: time.Now(),
+	}
+}
+
+func (e ContextClosedEvent) EventSource() any {
+	return e.ctx
+}
+
+func (e ContextClosedEvent) Time() time.Time {
+	return e.time
+}
+
+func (e ContextClosedEvent) Context() Context {
+	return e.ctx
+}
+
 type StartedEvent struct {
 	app       Application
 	ctx       Context

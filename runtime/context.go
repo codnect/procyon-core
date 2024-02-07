@@ -15,8 +15,7 @@ type Context interface {
 
 	Environment() env.Environment
 	Container() container.Container
-	Start() error
-	Stop() error
+	Close()
 }
 
 type ContextCustomizer interface {

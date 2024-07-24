@@ -4,22 +4,32 @@ import (
 	"codnect.io/reflector"
 	"fmt"
 	"strings"
+	"sync"
 	"unicode"
 )
 
-type DefinitionOption func(definition *Definition)
+type Option func(definition *Definition) error
 
 type Definition struct {
 	name            string
 	typ             reflector.Type
 	scope           string
-	priority        int
-	primary         bool
 	constructor     reflector.Function
 	constructorArgs []*ConstructorArgument
 }
 
-func MakeDefinition(constructor Constructor, options ...DefinitionOption) (*Definition, error) {
+type DefinitionRegistry interface {
+	Register(def *Definition) error
+	Remove(name string) error
+	Contains(name string) bool
+	Find(name string) (*Definition, bool)
+	List() []*Definition
+	Names() []string
+	NamesByType(requiredType reflector.Type) []string
+	Count() int
+}
+
+func MakeDefinition(constructor Constructor, options ...Option) (*Definition, error) {
 	if constructor == nil {
 		return nil, fmt.Errorf("constructor should not be nil")
 	}
@@ -54,17 +64,19 @@ func MakeDefinition(constructor Constructor, options ...DefinitionOption) (*Defi
 
 	for index, parameterType := range constructorFunc.Parameters() {
 		arg := &ConstructorArgument{
-			index:        index,
-			typ:          parameterType,
-			requiredType: parameterType,
-			optional:     false,
+			index:    index,
+			typ:      parameterType,
+			optional: false,
 		}
 
 		definition.constructorArgs = append(definition.constructorArgs, arg)
 	}
 
 	for _, option := range options {
-		option(definition)
+		err := option(definition)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return definition, nil
@@ -78,16 +90,12 @@ func (d *Definition) Type() reflector.Type {
 	return d.typ
 }
 
+func (d *Definition) Constructor() reflector.Function {
+	return d.constructor
+}
+
 func (d *Definition) Scope() string {
 	return d.scope
-}
-
-func (d *Definition) Priority() int {
-	return d.priority
-}
-
-func (d *Definition) IsPrimary() bool {
-	return d.primary
 }
 
 func (d *Definition) IsSingleton() bool {
@@ -108,54 +116,6 @@ func (d *Definition) ConstructorArguments() []*ConstructorArgument {
 	return copyOfArgs
 }
 
-func WithName(name string) DefinitionOption {
-	return func(definition *Definition) {
-		if strings.TrimSpace(name) != "" {
-			definition.name = name
-		}
-	}
-}
-
-func WithPriority(priority int) DefinitionOption {
-	return func(definition *Definition) {
-		definition.priority = priority
-	}
-}
-
-func WithPrimary() DefinitionOption {
-	return func(definition *Definition) {
-		definition.primary = true
-	}
-}
-
-func WithScope(scope string) DefinitionOption {
-	return func(definition *Definition) {
-		if strings.TrimSpace(scope) == "" {
-			definition.scope = SingletonScope
-		} else {
-			definition.scope = scope
-		}
-	}
-}
-
-func WithNamedArgument(index int, name string) DefinitionOption {
-	return func(definition *Definition) {
-		definition.constructorArgs[index].name = name
-	}
-}
-
-func WithTypedArgument[T any](index int) DefinitionOption {
-	return func(definition *Definition) {
-		definition.constructorArgs[index].requiredType = reflector.TypeOf[T]()
-	}
-}
-
-func WithOptionalArgument(index int) DefinitionOption {
-	return func(definition *Definition) {
-		definition.constructorArgs[index].optional = true
-	}
-}
-
 func lowerCamelCase(str string) string {
 	isFirst := true
 
@@ -168,4 +128,124 @@ func lowerCamelCase(str string) string {
 		return r
 	}, str)
 
+}
+
+type ObjectDefinitionRegistry struct {
+	definitionMap map[string]*Definition
+	muDefinitions *sync.RWMutex
+}
+
+func NewObjectDefinitionRegistry() *ObjectDefinitionRegistry {
+	return &ObjectDefinitionRegistry{
+		definitionMap: map[string]*Definition{},
+		muDefinitions: &sync.RWMutex{},
+	}
+}
+
+func (r *ObjectDefinitionRegistry) Register(def *Definition) error {
+	if def == nil {
+		return fmt.Errorf("definition should not be nil")
+	}
+
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	if _, exists := r.definitionMap[def.Name()]; exists {
+		return fmt.Errorf("definition with name %s already exists", def.Name())
+	}
+
+	r.definitionMap[def.Name()] = def
+
+	return nil
+}
+
+func (r *ObjectDefinitionRegistry) Remove(name string) error {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	if _, exists := r.definitionMap[name]; !exists {
+		return fmt.Errorf("no found definition with name %s", name)
+	}
+
+	delete(r.definitionMap, name)
+	return nil
+}
+
+func (r *ObjectDefinitionRegistry) Contains(name string) bool {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	_, exists := r.definitionMap[name]
+	return exists
+}
+
+func (r *ObjectDefinitionRegistry) Find(name string) (*Definition, bool) {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	if def, exists := r.definitionMap[name]; exists {
+		return def, true
+	}
+
+	return nil, false
+}
+
+func (r *ObjectDefinitionRegistry) List() []*Definition {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	defs := make([]*Definition, 0)
+	for _, def := range r.definitionMap {
+		defs = append(defs, def)
+	}
+
+	return defs
+}
+
+func (r *ObjectDefinitionRegistry) Names() []string {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	names := make([]string, 0)
+	for name := range r.definitionMap {
+		names = append(names, name)
+	}
+
+	return names
+}
+
+func (r *ObjectDefinitionRegistry) NamesByType(requiredType reflector.Type) []string {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	names := make([]string, 0)
+
+	if requiredType == nil {
+		return names
+	}
+
+	for name, def := range r.definitionMap {
+
+		instanceType := def.Type()
+
+		if instanceType.CanConvert(requiredType) {
+			names = append(names, name)
+		} else if reflector.IsPointer(instanceType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
+			ptrType := reflector.ToPointer(instanceType)
+
+			if ptrType.Elem().CanConvert(requiredType) {
+				names = append(names, name)
+			}
+		}
+
+	}
+
+	return names
+}
+
+func (r *ObjectDefinitionRegistry) Count() int {
+	defer r.muDefinitions.Unlock()
+	r.muDefinitions.Lock()
+
+	return len(r.definitionMap)
 }

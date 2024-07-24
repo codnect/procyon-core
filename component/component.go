@@ -1,9 +1,12 @@
 package component
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 var (
-	components   = make([]*Component, 0)
+	components   = make(map[string]*Component)
 	muComponents = sync.RWMutex{}
 )
 
@@ -12,8 +15,8 @@ type Component struct {
 	conditions []Condition
 }
 
-func newComponent(constructor Constructor) *Component {
-	definition, err := MakeDefinition(constructor)
+func createComponent(constructor Constructor, options ...Option) *Component {
+	definition, err := MakeDefinition(constructor, options...)
 
 	if err != nil {
 		panic(err)
@@ -43,37 +46,6 @@ type Registration struct {
 	component *Component
 }
 
-func newRegistration(constructor Constructor) Registration {
-	return Registration{
-		component: newComponent(constructor),
-	}
-}
-
-func (r Registration) Named(name string) Registration {
-	WithName(name)(r.component.definition)
-	return r
-}
-
-func (r Registration) Scoped(scope string) Registration {
-	WithScope(scope)(r.component.definition)
-	return r
-}
-
-func (r Registration) Primary() Registration {
-	WithPrimary()(r.component.definition)
-	return r
-}
-
-func (r Registration) Prioritized(priority int) Registration {
-	WithPriority(priority)(r.component.definition)
-	return r
-}
-
-func (r Registration) Inject(argumentIndex int) Registration {
-
-	return r
-}
-
 func (r Registration) ConditionalOn(condition Condition) Registration {
 	if condition != nil {
 		r.component.conditions = append(r.component.conditions, condition)
@@ -82,14 +54,22 @@ func (r Registration) ConditionalOn(condition Condition) Registration {
 	return r
 }
 
-func Register(constructor Constructor) Registration {
+func Register(constructor Constructor, options ...Option) Registration {
 	defer muComponents.Unlock()
 	muComponents.Lock()
-	registration := newRegistration(constructor)
 
-	components = append(components, registration.component)
+	component := createComponent(constructor, options...)
+	componentName := component.Definition().Name()
 
-	return registration
+	if _, exists := components[componentName]; exists {
+		panic(fmt.Sprintf("component with name '%s' already exists", componentName))
+	}
+
+	components[componentName] = component
+
+	return Registration{
+		component: component,
+	}
 }
 
 func List() []*Component {

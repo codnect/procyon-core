@@ -1,30 +1,39 @@
 package main
 
-import "github.com/codnect/procyoncore/component"
+import (
+	"github.com/codnect/procyoncore/component"
+	"github.com/codnect/procyoncore/component/filter"
+)
 
 func main() {
 
-	component.Register(NewHelloController).Named("homeController").
-		Scoped(component.SingletonScope).
-		Prioritized(2).
-		Inject(0).
+	component.Register(NewController, component.Named("test"), component.Scoped("myscope")).
 		ConditionalOn(nil)
 
-	l := component.List()
-	if len(l) != 0 {
-
-	}
-	d, _ := component.MakeDefinition(NewHelloController,
-		component.WithName(""), component.WithNamedArgument(0, ""))
-	if d.IsPrimary() {
-
+	container := component.NewObjectContainer()
+	listOfComponents := component.List()
+	// register definitions ....
+	for _, cm := range listOfComponents {
+		container.Singletons().
 	}
 
+	c, err := container.GetObject(nil, filter.ByName("test"), filter.ByType[string]())
+
+}
+
+type HelloService struct {
 }
 
 type HelloController struct {
 }
 
-func NewHelloController(name string) *HelloController {
+func NewController(helloService *HelloService) *HelloController {
+	return &HelloController{}
+}
+
+type UserController struct {
+}
+
+func NewUserController(helloService *HelloService) *HelloController {
 	return &HelloController{}
 }

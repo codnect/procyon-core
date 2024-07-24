@@ -27,7 +27,11 @@ type SingletonObjectRegistry struct {
 }
 
 func NewSingletonObjectRegistry() *SingletonObjectRegistry {
-	return &SingletonObjectRegistry{}
+	return &SingletonObjectRegistry{
+		singletonObjects:              make(map[string]any),
+		singletonObjectsInPreparation: make(map[string]struct{}),
+		typesOfSingletonObjects:       make(map[string]reflector.Type),
+	}
 }
 
 func (r *SingletonObjectRegistry) Register(name string, instance any) error {
@@ -113,9 +117,7 @@ func (r *SingletonObjectRegistry) OrElseGet(name string, provider ObjectProvider
 		return nil, err
 	}
 
-	defer func() {
-		r.removeObjectFromPreparation(name)
-	}()
+	defer r.removeObjectFromPreparation(name)
 
 	instance, err = provider(context.Background())
 

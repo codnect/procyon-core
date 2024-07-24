@@ -55,6 +55,7 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		filterFunction(filterOpts)
 	}
 
+	ctx = contextWithHolder(ctx)
 	objectName := filterOpts.Name
 
 	if objectName == "" && filterOpts.Type == nil {
@@ -89,7 +90,7 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		}
 	}
 
-	if filterOpts.Type != nil && !c.match(definition.Type(), filterOpts.Type) {
+	if filterOpts.Type != nil && !c.matchType(definition.Type(), filterOpts.Type) {
 		return nil, fmt.Errorf("definition type with name %s does not match the required type", objectName)
 	}
 
@@ -105,7 +106,15 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 
 		return instance, err
 	} else if definition.IsPrototype() {
+		prototypeHolder := holderFromContext(ctx)
+		err := prototypeHolder.beforeCreation(objectName)
 
+		if err != nil {
+			return nil, err
+		}
+
+		defer prototypeHolder.afterCreation(objectName)
+		return c.createInstance(ctx, definition, filterOpts.Arguments)
 	}
 
 	if strings.TrimSpace(definition.Scope()) == "" {
@@ -119,7 +128,15 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 	}
 
 	return scope.GetObject(ctx, objectName, func(ctx context.Context) (any, error) {
-		return nil, nil
+		scopeHolder := holderFromContext(ctx)
+		err = scopeHolder.beforeCreation(objectName)
+
+		if err != nil {
+			return nil, err
+		}
+
+		defer scopeHolder.afterCreation(objectName)
+		return c.createInstance(ctx, definition, filterOpts.Arguments)
 	})
 }
 
@@ -192,7 +209,7 @@ func (c *ObjectContainer) FindScope(name string) (Scope, error) {
 	return nil, fmt.Errorf("no scope registered for scope name %s", name)
 }
 
-func (c *ObjectContainer) match(instanceType reflector.Type, requiredType reflector.Type) bool {
+func (c *ObjectContainer) matchType(instanceType reflector.Type, requiredType reflector.Type) bool {
 	if instanceType.CanConvert(requiredType) {
 		return true
 	} else if reflector.IsPointer(instanceType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
@@ -207,19 +224,19 @@ func (c *ObjectContainer) match(instanceType reflector.Type, requiredType reflec
 }
 
 func (c *ObjectContainer) createInstance(ctx context.Context, definition *Definition, args []any) (instance any, err error) {
-	newFunc := definition.constructor
+	constructorFunc := definition.constructor
 	argsCount := len(definition.ConstructorArguments())
 
 	if argsCount != 0 && len(args) == 0 {
 		var resolvedArguments []any
-		//resolvedArguments, err = m.resolveInputs(ctx, definition.ConstructorArguments())
+		resolvedArguments, err = c.resolveArguments(ctx, definition.ConstructorArguments())
 
 		if err != nil {
 			return nil, err
 		}
 
 		var results []any
-		results, err = newFunc.Invoke(resolvedArguments...)
+		results, err = constructorFunc.Invoke(resolvedArguments...)
 
 		if err != nil {
 			return nil, err
@@ -228,7 +245,7 @@ func (c *ObjectContainer) createInstance(ctx context.Context, definition *Defini
 		instance = results[0]
 	} else if (argsCount == 0 && len(args) == 0) || (len(args) != 0 && argsCount == len(args)) {
 		var results []any
-		results, err = newFunc.Invoke(args...)
+		results, err = constructorFunc.Invoke(args...)
 
 		if err != nil {
 			return nil, err
@@ -243,13 +260,13 @@ func (c *ObjectContainer) createInstance(ctx context.Context, definition *Defini
 	return
 }
 
-/*
-func (m *ObjectContainer) resolveInputs(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
+func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
 	arguments := make([]any, 0)
+
 	for _, arg := range args {
 
 		if reflector.IsSlice(arg.Type()) {
-			sliceType := reflector.ToSlice(arg.Type())
+			/*sliceType := reflector.ToSlice(arg.Type())
 			instances, err := m.getInstances(ctx, sliceType, sliceType.Elem())
 
 			if err != nil {
@@ -257,7 +274,7 @@ func (m *ObjectContainer) resolveInputs(ctx context.Context, args []*Constructor
 			}
 
 			arguments = append(arguments, instances)
-			continue
+			continue*/
 		}
 
 		var (
@@ -265,16 +282,18 @@ func (m *ObjectContainer) resolveInputs(ctx context.Context, args []*Constructor
 			err      error
 		)
 
-		resolvableInstance, exists := m.getResolvableInstance(arg.Type())
-		if exists {
-			arguments = append(arguments, resolvableInstance)
-			continue
-		}
+		/*
+			resolvableInstance, exists := m.getResolvableInstance(arg.Type())
+			if exists {
+				arguments = append(arguments, resolvableInstance)
+				continue
+			}
+		*/
 
 		if arg.Name() != "" {
-			instance, err = m.Get(ctx, arg.Name())
+			instance, err = m.GetObject(ctx, filter.ByName(arg.Name()))
 		} else {
-			instance, err = m.GetByType(ctx, input.Type())
+			instance, err = m.GetObject(ctx, filter.ByType(arg.Type()))
 		}
 
 		if err != nil {
@@ -303,4 +322,3 @@ func (m *ObjectContainer) resolveInputs(ctx context.Context, args []*Constructor
 
 	return arguments, nil
 }
-*/

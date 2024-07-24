@@ -1,39 +1,49 @@
 package main
 
 import (
+	"context"
 	"github.com/codnect/procyoncore/component"
 	"github.com/codnect/procyoncore/component/filter"
 )
 
 func main() {
 
-	component.Register(NewController, component.Named("test"), component.Scoped("myscope")).
-		ConditionalOn(nil)
+	component.Register(NewUserController, component.Named("test"))
+	component.Register(NewUserService)
 
-	container := component.NewObjectContainer()
-	listOfComponents := component.List()
-	// register definitions ....
-	for _, cm := range listOfComponents {
-		container.Singletons().
+	objectContainer := component.NewObjectContainer()
+	for _, cmp := range component.List() {
+		objectContainer.Definitions().Register(cmp.Definition())
 	}
 
-	c, err := container.GetObject(nil, filter.ByName("test"), filter.ByType[string]())
+	instance, err := objectContainer.GetObject(context.Background(), filter.ByTypeOf[*UserController](), filter.ByName("23"))
 
-}
+	if err != nil {
+		panic(err)
+	}
 
-type HelloService struct {
-}
+	if instance != nil {
 
-type HelloController struct {
-}
-
-func NewController(helloService *HelloService) *HelloController {
-	return &HelloController{}
+	}
 }
 
 type UserController struct {
+	userService *UserService
 }
 
-func NewUserController(helloService *HelloService) *HelloController {
-	return &HelloController{}
+func (c *UserController) saveUser() {
+
+}
+
+func NewUserController(userService *UserService) *UserController {
+	return &UserController{
+		userService: userService,
+	}
+}
+
+type UserService struct {
+}
+
+func NewUserService() *UserService {
+	return &UserService{}
 }

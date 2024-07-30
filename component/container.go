@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/codnect/procyoncore/component/filter"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -16,7 +17,7 @@ type Container interface {
 	IsRunning() bool
 	CreateObject(ctx context.Context, definition *Definition, args []any) (any, error)
 	GetObject(ctx context.Context, filters ...filter.Filter) (any, error)
-	ListObjects(ctx context.Context, filters ...filter.Filter) ([]any, error)
+	ListObjects(ctx context.Context, filters ...filter.Filter) []any
 	ContainsObject(name string) bool
 	IsSingleton(name string) bool
 	IsPrototype(name string) bool
@@ -143,13 +144,24 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 	})
 }
 
-func (c *ObjectContainer) ListObjects(ctx context.Context, filters ...filter.Filter) ([]any, error) {
-	filterOpts := &filter.Filters{}
-	for _, filterFunction := range filters {
-		filterFunction(filterOpts)
+func (c *ObjectContainer) ListObjects(ctx context.Context, filters ...filter.Filter) []any {
+	objectList := make([]any, 0)
+	singletonNames := c.singletons.Names()
+	objectList = append(objectList, c.singletons.List(filters...)...)
+
+	for _, definition := range c.definitions.List(filters...) {
+		if (definition.IsSingleton() && !slices.Contains(singletonNames, definition.Name())) || !definition.IsSingleton() {
+			object, err := c.GetObject(ctx, filter.ByName(definition.Name()))
+
+			if err != nil {
+				continue
+			}
+
+			objectList = append(objectList, object)
+		}
 	}
 
-	return nil, nil
+	return objectList
 }
 
 func (c *ObjectContainer) ContainsObject(name string) bool {
@@ -281,15 +293,10 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 	for _, arg := range args {
 
 		if reflector.IsSlice(arg.Type()) {
-			/*sliceType := reflector.ToSlice(arg.Type())
-			instances, err := m.getInstances(ctx, sliceType, sliceType.Elem())
-
-			if err != nil {
-				return nil, err
-			}
-
-			arguments = append(arguments, instances)
-			continue*/
+			sliceType := reflector.ToSlice(arg.Type())
+			objectList := c.ListObjects(ctx, filter.ByType(sliceType.Elem()))
+			arguments = append(arguments, objectList)
+			continue
 		}
 
 		var (

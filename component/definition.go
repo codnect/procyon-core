@@ -188,8 +188,11 @@ func (r *ObjectDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, 
 	}
 
 	if len(definitionList) == 0 {
-		return nil, &NotFoundError{
-			//ErrorString: fmt.Sprintf("not found any instance of type %s", requiredType.Name()),
+		filterOpts := filter.Of(filters...)
+
+		return nil, DefinitionNotFoundError{
+			name: filterOpts.Name,
+			typ:  filterOpts.Type,
 		}
 	}
 

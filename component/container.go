@@ -75,8 +75,8 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		definitionList := c.Definitions().List(filter.ByType(filterOpts.Type))
 
 		if len(definitionList) == 0 {
-			return nil, &NotFoundError{
-				//ErrorString: fmt.Sprintf("container: not found instance or definition with required type %s", requiredType.Name()),
+			return nil, ObjectNotFoundError{
+				typ: filterOpts.Type,
 			}
 		} else if len(definitionList) > 1 {
 			return nil, fmt.Errorf("there is more than one definition for the required type %s, it cannot be distinguished", filterOpts.Type.Name())
@@ -312,7 +312,7 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 		}
 
 		if err != nil {
-			if notFoundErr := (*NotFoundError)(nil); errors.As(err, &notFoundErr) && !reflector.IsPointer(arg.Type()) && arg.Type().IsInstantiable() {
+			if notFoundErr := (*ObjectNotFoundError)(nil); errors.As(err, &notFoundErr) && !reflector.IsPointer(arg.Type()) && arg.Type().IsInstantiable() {
 				var val reflector.Value
 				val, err = arg.Type().Instantiate()
 

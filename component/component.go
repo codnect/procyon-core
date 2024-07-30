@@ -3,7 +3,6 @@ package component
 import (
 	"codnect.io/reflector"
 	"fmt"
-	"github.com/codnect/procyoncore/component/condition"
 	"github.com/codnect/procyoncore/component/filter"
 	"sync"
 )
@@ -15,7 +14,7 @@ var (
 
 type Component struct {
 	definition *Definition
-	conditions []condition.Condition
+	conditions []Condition
 }
 
 func createComponent(constructor Constructor, options ...Option) *Component {
@@ -27,7 +26,7 @@ func createComponent(constructor Constructor, options ...Option) *Component {
 
 	return &Component{
 		definition: definition,
-		conditions: make([]condition.Condition, 0),
+		conditions: make([]Condition, 0),
 	}
 }
 
@@ -35,8 +34,8 @@ func (c *Component) Definition() *Definition {
 	return c.definition
 }
 
-func (c *Component) Conditions() []condition.Condition {
-	copyOfConditions := make([]condition.Condition, 0)
+func (c *Component) Conditions() []Condition {
+	copyOfConditions := make([]Condition, 0)
 
 	for _, condition := range copyOfConditions {
 		copyOfConditions = append(copyOfConditions, condition)
@@ -49,7 +48,7 @@ type Registration struct {
 	component *Component
 }
 
-func (r Registration) ConditionalOn(condition condition.Condition) Registration {
+func (r Registration) ConditionalOn(condition Condition) Registration {
 	if condition != nil {
 		r.component.conditions = append(r.component.conditions, condition)
 	}

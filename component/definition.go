@@ -3,6 +3,7 @@ package component
 import (
 	"codnect.io/reflector"
 	"fmt"
+	"github.com/codnect/procyoncore/component/filter"
 	"strings"
 	"sync"
 	"unicode"
@@ -22,10 +23,10 @@ type DefinitionRegistry interface {
 	Register(def *Definition) error
 	Remove(name string) error
 	Contains(name string) bool
-	Find(name string) (*Definition, bool)
-	List() []*Definition
+	Find(filters ...filter.Filter) (*Definition, error)
+	FindFirst(filters ...filter.Filter) (*Definition, bool)
+	List(filters ...filter.Filter) []*Definition
 	Names() []string
-	NamesByType(requiredType reflector.Type) []string
 	Count() int
 }
 
@@ -179,27 +180,62 @@ func (r *ObjectDefinitionRegistry) Contains(name string) bool {
 	return exists
 }
 
-func (r *ObjectDefinitionRegistry) Find(name string) (*Definition, bool) {
-	defer r.muDefinitions.Unlock()
-	r.muDefinitions.Lock()
+func (r *ObjectDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, error) {
+	definitionList := r.List(filters...)
 
-	if def, exists := r.definitionMap[name]; exists {
-		return def, true
+	if len(definitionList) > 1 {
+		return nil, fmt.Errorf("definitions cannot be distinguished because too many matching found")
 	}
 
-	return nil, false
+	if len(definitionList) == 0 {
+		return nil, &NotFoundError{
+			//ErrorString: fmt.Sprintf("not found any instance of type %s", requiredType.Name()),
+		}
+	}
+
+	return definitionList[0], nil
 }
 
-func (r *ObjectDefinitionRegistry) List() []*Definition {
+func (r *ObjectDefinitionRegistry) FindFirst(filters ...filter.Filter) (*Definition, bool) {
+	definitionList := r.List(filters...)
+
+	if len(definitionList) == 0 {
+		return nil, false
+	}
+
+	return definitionList[0], true
+}
+
+func (r *ObjectDefinitionRegistry) List(filters ...filter.Filter) []*Definition {
 	defer r.muDefinitions.Unlock()
 	r.muDefinitions.Lock()
 
-	defs := make([]*Definition, 0)
-	for _, def := range r.definitionMap {
-		defs = append(defs, def)
+	filterOpts := filter.Of(filters...)
+	definitionList := make([]*Definition, 0)
+
+	for _, definition := range r.definitionMap {
+		if filterOpts.Name != "" && filterOpts.Name != definition.Name() {
+			continue
+		}
+
+		if filterOpts.Type == nil {
+			definitionList = append(definitionList, definition)
+			continue
+		}
+
+		if definition.Type().CanConvert(filterOpts.Type) {
+			definitionList = append(definitionList, definition)
+		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
+			pointerType := reflector.ToPointer(definition.Type())
+
+			if pointerType.Elem().CanConvert(filterOpts.Type) {
+				definitionList = append(definitionList, definition)
+			}
+		}
+
 	}
 
-	return defs
+	return definitionList
 }
 
 func (r *ObjectDefinitionRegistry) Names() []string {

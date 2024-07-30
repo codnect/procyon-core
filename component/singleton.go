@@ -3,17 +3,18 @@ package component
 import (
 	"codnect.io/reflector"
 	"context"
-	"errors"
 	"fmt"
+	"github.com/codnect/procyoncore/component/filter"
 	"sync"
 )
 
 type SingletonRegistry interface {
-	Register(name string, instance any) error
-	Find(name string) (any, bool)
-	FindByType(requiredType reflector.Type) (any, error)
-	ListByType(requiredType reflector.Type) []any
-	OrElseGet(name string, provider ObjectProvider) (any, error)
+	Register(name string, object any) error
+	Remove(name string) error
+	Find(filters ...filter.Filter) (any, error)
+	FindFirst(filters ...filter.Filter) (any, bool)
+	List(filters ...filter.Filter) []any
+	OrElseCreate(name string, provider ObjectProvider) (any, error)
 	Contains(name string) bool
 	Names() []string
 	Count() int
@@ -34,84 +35,103 @@ func NewSingletonObjectRegistry() *SingletonObjectRegistry {
 	}
 }
 
-func (r *SingletonObjectRegistry) Register(name string, instance any) error {
+func (r *SingletonObjectRegistry) Register(name string, object any) error {
 	defer r.muSingletonObjects.Unlock()
 	r.muSingletonObjects.Lock()
 
 	if _, exists := r.singletonObjects[name]; exists {
-		return fmt.Errorf("instance with name %s already exists", name)
+		return fmt.Errorf("object with name %s already exists", name)
 	}
 
-	r.singletonObjects[name] = instance
-	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(instance)
+	r.singletonObjects[name] = object
+	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(object)
 	return nil
 }
 
-func (r *SingletonObjectRegistry) Find(name string) (any, bool) {
+func (r *SingletonObjectRegistry) Remove(name string) error {
 	defer r.muSingletonObjects.Unlock()
 	r.muSingletonObjects.Lock()
 
-	if instance, exists := r.singletonObjects[name]; exists {
-		return instance, true
+	if _, exists := r.singletonObjects[name]; !exists {
+		return fmt.Errorf("no found object with name %s", name)
 	}
 
-	return nil, false
+	delete(r.singletonObjects, name)
+	delete(r.typesOfSingletonObjects, name)
+	return nil
 }
 
-func (r *SingletonObjectRegistry) FindByType(requiredType reflector.Type) (any, error) {
-	if requiredType == nil {
-		return nil, errors.New("container: requiredType cannot be nil")
+func (r *SingletonObjectRegistry) Find(filters ...filter.Filter) (any, error) {
+	objectList := r.List(filters...)
+
+	if len(objectList) > 1 {
+		return nil, fmt.Errorf("objects cannot be distinguished because too many matching found")
 	}
 
-	instances := r.ListByType(requiredType)
-	if len(instances) > 1 {
-		return nil, fmt.Errorf("container: instances cannot be distinguished for required type %s", requiredType.Name())
-	}
-
-	if len(instances) == 0 {
+	if len(objectList) == 0 {
 		return nil, &NotFoundError{
 			//ErrorString: fmt.Sprintf("container: not found any instance of type %s", requiredType.Name()),
 		}
 	}
 
-	return instances[0], nil
+	return objectList[0], nil
 }
 
-func (r *SingletonObjectRegistry) ListByType(requiredType reflector.Type) []any {
+func (r *SingletonObjectRegistry) FindFirst(filters ...filter.Filter) (any, bool) {
+	objectList := r.List(filters...)
+
+	if len(objectList) == 0 {
+		return nil, false
+	}
+
+	return objectList[0], true
+}
+
+func (r *SingletonObjectRegistry) List(filters ...filter.Filter) []any {
 	defer r.muSingletonObjects.Unlock()
 	r.muSingletonObjects.Lock()
 
-	instances := make([]any, 0)
+	filterOpts := filter.Of(filters...)
+	objectList := make([]any, 0)
 
-	for name, typ := range r.typesOfSingletonObjects {
+	for objectName, objectType := range r.typesOfSingletonObjects {
 
-		if typ.CanConvert(requiredType) {
-			instances = append(instances, r.singletonObjects[name])
-		} else if reflector.IsPointer(typ) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
-			ptrType := reflector.ToPointer(typ)
+		if filterOpts.Name != "" && filterOpts.Name != objectName {
+			continue
+		}
 
-			if ptrType.Elem().CanConvert(requiredType) {
+		if filterOpts.Type == nil {
+			objectList = append(objectList, r.singletonObjects[objectName])
+			continue
+		}
+
+		if objectType.CanConvert(filterOpts.Type) {
+			objectList = append(objectList, r.singletonObjects[objectName])
+		} else if reflector.IsPointer(objectType) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
+			ptrType := reflector.ToPointer(objectType)
+
+			if ptrType.Elem().CanConvert(filterOpts.Type) {
 				val, err := ptrType.Elem().Value()
 
 				if err == nil {
-					instances = append(instances, val)
+					objectList = append(objectList, val)
 				}
 			}
 		}
 
 	}
 
-	return instances
+	return objectList
 }
 
-func (r *SingletonObjectRegistry) OrElseGet(name string, provider ObjectProvider) (any, error) {
-	instance, ok := r.Find(name)
+func (r *SingletonObjectRegistry) OrElseCreate(name string, provider ObjectProvider) (any, error) {
+	object, err := r.Find(filter.ByName(name))
 
-	if ok {
-		return instance, nil
+	if err == nil {
+		return object, nil
 	}
 
-	err := r.putObjectToPreparation(name)
+	err = r.putObjectToPreparation(name)
 
 	if err != nil {
 		return nil, err
@@ -119,16 +139,16 @@ func (r *SingletonObjectRegistry) OrElseGet(name string, provider ObjectProvider
 
 	defer r.removeObjectFromPreparation(name)
 
-	instance, err = provider(context.Background())
+	object, err = provider(context.Background())
 
 	if err != nil {
 		return nil, err
 	}
 
-	r.singletonObjects[name] = instance
-	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(instance)
+	r.singletonObjects[name] = object
+	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(object)
 
-	return instance, nil
+	return object, nil
 }
 
 func (r *SingletonObjectRegistry) Contains(name string) bool {
@@ -163,7 +183,7 @@ func (r *SingletonObjectRegistry) putObjectToPreparation(name string) error {
 	r.muSingletonObjects.Lock()
 
 	if _, ok := r.singletonObjectsInPreparation[name]; ok {
-		return fmt.Errorf("instance with name %s is currently in preparation, maybe it has got circular dependency cycle", name)
+		return fmt.Errorf("object with name %s is currently in preparation, maybe it has got circular dependency cycle", name)
 	}
 
 	r.singletonObjectsInPreparation[name] = struct{}{}

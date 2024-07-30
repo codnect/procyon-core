@@ -1,7 +1,10 @@
 package component
 
 import (
+	"codnect.io/reflector"
 	"fmt"
+	"github.com/codnect/procyoncore/component/condition"
+	"github.com/codnect/procyoncore/component/filter"
 	"sync"
 )
 
@@ -12,7 +15,7 @@ var (
 
 type Component struct {
 	definition *Definition
-	conditions []Condition
+	conditions []condition.Condition
 }
 
 func createComponent(constructor Constructor, options ...Option) *Component {
@@ -24,7 +27,7 @@ func createComponent(constructor Constructor, options ...Option) *Component {
 
 	return &Component{
 		definition: definition,
-		conditions: make([]Condition, 0),
+		conditions: make([]condition.Condition, 0),
 	}
 }
 
@@ -32,8 +35,8 @@ func (c *Component) Definition() *Definition {
 	return c.definition
 }
 
-func (c *Component) Conditions() []Condition {
-	copyOfConditions := make([]Condition, 0)
+func (c *Component) Conditions() []condition.Condition {
+	copyOfConditions := make([]condition.Condition, 0)
 
 	for _, condition := range copyOfConditions {
 		copyOfConditions = append(copyOfConditions, condition)
@@ -46,7 +49,7 @@ type Registration struct {
 	component *Component
 }
 
-func (r Registration) ConditionalOn(condition Condition) Registration {
+func (r Registration) ConditionalOn(condition condition.Condition) Registration {
 	if condition != nil {
 		r.component.conditions = append(r.component.conditions, condition)
 	}
@@ -72,14 +75,35 @@ func Register(constructor Constructor, options ...Option) Registration {
 	}
 }
 
-func List() []*Component {
+func List(filters ...filter.Filter) []*Component {
 	defer muComponents.Unlock()
 	muComponents.Lock()
 
-	copyOfComponents := make([]*Component, 0)
+	filterOpts := filter.Of(filters...)
+	componentList := make([]*Component, 0)
+
 	for _, component := range components {
-		copyOfComponents = append(copyOfComponents, component)
+		definition := component.Definition()
+
+		if filterOpts.Name != "" && filterOpts.Name != component.Definition().Name() {
+			continue
+		}
+
+		if filterOpts.Type == nil {
+			componentList = append(componentList, component)
+			continue
+		}
+
+		if definition.Type().CanConvert(filterOpts.Type) {
+			componentList = append(componentList, component)
+		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
+			pointerType := reflector.ToPointer(definition.Type())
+
+			if pointerType.Elem().CanConvert(filterOpts.Type) {
+				componentList = append(componentList, component)
+			}
+		}
 	}
 
-	return copyOfComponents
+	return componentList
 }

@@ -13,8 +13,11 @@ import (
 type Container interface {
 	Start() error
 	Stop() error
+	IsRunning() bool
+	CreateObject(ctx context.Context, definition *Definition, args []any) (any, error)
 	GetObject(ctx context.Context, filters ...filter.Filter) (any, error)
 	ListObjects(ctx context.Context, filters ...filter.Filter) ([]any, error)
+	ContainsObject(name string) bool
 	IsSingleton(name string) bool
 	IsPrototype(name string) bool
 	Definitions() DefinitionRegistry
@@ -49,11 +52,11 @@ func (c *ObjectContainer) Stop() error {
 	return nil
 }
 
+func (c *ObjectContainer) IsRunning() bool {
+	return false
+}
 func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filter) (any, error) {
-	filterOpts := &filter.Filters{}
-	for _, filterFunction := range filters {
-		filterFunction(filterOpts)
-	}
+	filterOpts := filter.Of(filters...)
 
 	ctx = contextWithHolder(ctx)
 	objectName := filterOpts.Name
@@ -63,31 +66,29 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 	}
 
 	if objectName == "" {
-		candidate, err := c.Singletons().FindByType(filterOpts.Type)
+		candidate, err := c.Singletons().Find(filter.ByType(filterOpts.Type))
 
 		if err == nil {
 			return candidate, nil
 		}
 
-		candidateNames := c.Definitions().NamesByType(filterOpts.Type)
+		definitionList := c.Definitions().List(filter.ByType(filterOpts.Type))
 
-		if len(candidateNames) == 0 {
+		if len(definitionList) == 0 {
 			return nil, &NotFoundError{
 				//ErrorString: fmt.Sprintf("container: not found instance or definition with required type %s", requiredType.Name()),
 			}
-		} else if len(candidateNames) > 1 {
+		} else if len(definitionList) > 1 {
 			return nil, fmt.Errorf("there is more than one definition for the required type %s, it cannot be distinguished", filterOpts.Type.Name())
 		}
 
-		objectName = candidateNames[0]
+		objectName = definitionList[0].Name()
 	}
 
-	definition, ok := c.Definitions().Find(objectName)
+	definition, err := c.Definitions().Find(filter.ByName(objectName))
 
-	if !ok {
-		return nil, &NotFoundError{
-			//ErrorString: fmt.Sprintf("container: not found definition with name %s", name),
-		}
+	if err != nil {
+		return nil, err
 	}
 
 	if filterOpts.Type != nil && !c.matchType(definition.Type(), filterOpts.Type) {
@@ -95,33 +96,35 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 	}
 
 	if definition.IsSingleton() {
-		instance, err := c.Singletons().OrElseGet(objectName, func(ctx context.Context) (any, error) {
+		var object any
+		object, err = c.Singletons().OrElseCreate(objectName, func(ctx context.Context) (any, error) {
 
 			if log.IsDebugEnabled() {
-				log.D(ctx, "Creating singleton instance of '{}' under package '{}'", definition.Type().Name(), definition.Type().PackagePath())
+				log.D(ctx, "Creating singleton object of '{}' under package '{}'", definition.Type().Name(), definition.Type().PackagePath())
 			}
 
-			return c.createInstance(ctx, definition, filterOpts.Arguments)
+			return c.CreateObject(ctx, definition, nil)
 		})
 
-		return instance, err
+		return object, err
 	} else if definition.IsPrototype() {
 		prototypeHolder := holderFromContext(ctx)
-		err := prototypeHolder.beforeCreation(objectName)
+		err = prototypeHolder.beforeCreation(objectName)
 
 		if err != nil {
 			return nil, err
 		}
 
 		defer prototypeHolder.afterCreation(objectName)
-		return c.createInstance(ctx, definition, filterOpts.Arguments)
+		return c.CreateObject(ctx, definition, nil)
 	}
 
 	if strings.TrimSpace(definition.Scope()) == "" {
 		return nil, fmt.Errorf("no scope name for required type %s", filterOpts.Type.Name())
 	}
 
-	scope, err := c.FindScope(definition.Scope())
+	var scope Scope
+	scope, err = c.FindScope(definition.Scope())
 
 	if err != nil {
 		return nil, err
@@ -136,7 +139,7 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		}
 
 		defer scopeHolder.afterCreation(objectName)
-		return c.createInstance(ctx, definition, filterOpts.Arguments)
+		return c.CreateObject(ctx, definition, nil)
 	})
 }
 
@@ -149,14 +152,18 @@ func (c *ObjectContainer) ListObjects(ctx context.Context, filters ...filter.Fil
 	return nil, nil
 }
 
+func (c *ObjectContainer) ContainsObject(name string) bool {
+	return true
+}
+
 func (c *ObjectContainer) IsSingleton(name string) bool {
-	def, ok := c.definitions.Find(name)
-	return ok && def.IsSingleton()
+	definition, ok := c.definitions.FindFirst(filter.ByName(name))
+	return ok && definition.IsSingleton()
 }
 
 func (c *ObjectContainer) IsPrototype(name string) bool {
-	def, ok := c.definitions.Find(name)
-	return ok && def.IsPrototype()
+	definition, ok := c.definitions.FindFirst(filter.ByName(name))
+	return ok && definition.IsPrototype()
 }
 
 func (c *ObjectContainer) Definitions() DefinitionRegistry {
@@ -209,11 +216,11 @@ func (c *ObjectContainer) FindScope(name string) (Scope, error) {
 	return nil, fmt.Errorf("no scope registered for scope name %s", name)
 }
 
-func (c *ObjectContainer) matchType(instanceType reflector.Type, requiredType reflector.Type) bool {
-	if instanceType.CanConvert(requiredType) {
+func (c *ObjectContainer) matchType(objectType reflector.Type, requiredType reflector.Type) bool {
+	if objectType.CanConvert(requiredType) {
 		return true
-	} else if reflector.IsPointer(instanceType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
-		ptrType := reflector.ToPointer(instanceType)
+	} else if reflector.IsPointer(objectType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
+		ptrType := reflector.ToPointer(objectType)
 
 		if ptrType.Elem().CanConvert(requiredType) {
 			return true
@@ -223,7 +230,15 @@ func (c *ObjectContainer) matchType(instanceType reflector.Type, requiredType re
 	return false
 }
 
-func (c *ObjectContainer) createInstance(ctx context.Context, definition *Definition, args []any) (instance any, err error) {
+func (c *ObjectContainer) CreateObject(ctx context.Context, definition *Definition, args []any) (object any, err error) {
+	if ctx == nil {
+		return nil, errors.New("ctx cannot be nil")
+	}
+
+	if definition == nil {
+		return nil, errors.New("definition cannot be nil")
+	}
+
 	constructorFunc := definition.constructor
 	argsCount := len(definition.ConstructorArguments())
 
@@ -242,7 +257,7 @@ func (c *ObjectContainer) createInstance(ctx context.Context, definition *Defini
 			return nil, err
 		}
 
-		instance = results[0]
+		object = results[0]
 	} else if (argsCount == 0 && len(args) == 0) || (len(args) != 0 && argsCount == len(args)) {
 		var results []any
 		results, err = constructorFunc.Invoke(args...)
@@ -251,7 +266,7 @@ func (c *ObjectContainer) createInstance(ctx context.Context, definition *Defini
 			return nil, err
 		}
 
-		instance = results[0]
+		object = results[0]
 	} else {
 		return nil, fmt.Errorf("the number of provided arguments is wrong for definition %s", definition.Name())
 	}
@@ -260,7 +275,7 @@ func (c *ObjectContainer) createInstance(ctx context.Context, definition *Defini
 	return
 }
 
-func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
+func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
 	arguments := make([]any, 0)
 
 	for _, arg := range args {
@@ -278,8 +293,8 @@ func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 		}
 
 		var (
-			instance any
-			err      error
+			object any
+			err    error
 		)
 
 		/*
@@ -291,9 +306,9 @@ func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 		*/
 
 		if arg.Name() != "" {
-			instance, err = m.GetObject(ctx, filter.ByName(arg.Name()))
+			object, err = c.GetObject(ctx, filter.ByName(arg.Name()))
 		} else {
-			instance, err = m.GetObject(ctx, filter.ByType(arg.Type()))
+			object, err = c.GetObject(ctx, filter.ByType(arg.Type()))
 		}
 
 		if err != nil {
@@ -305,8 +320,8 @@ func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 					return nil, err
 				}
 
-				instance = val.Elem()
-				arguments = append(arguments, instance)
+				object = val.Elem()
+				arguments = append(arguments, object)
 				continue
 			}
 
@@ -316,7 +331,7 @@ func (m *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 				arguments = append(arguments, nil)
 			}
 		} else {
-			arguments = append(arguments, instance)
+			arguments = append(arguments, object)
 		}
 	}
 

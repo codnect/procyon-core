@@ -20,7 +20,7 @@ type Definition struct {
 }
 
 type DefinitionRegistry interface {
-	Register(def *Definition) error
+	Register(definition *Definition) error
 	Remove(name string) error
 	Contains(name string) bool
 	Find(filters ...filter.Filter) (*Definition, error)
@@ -143,19 +143,19 @@ func NewObjectDefinitionRegistry() *ObjectDefinitionRegistry {
 	}
 }
 
-func (r *ObjectDefinitionRegistry) Register(def *Definition) error {
-	if def == nil {
+func (r *ObjectDefinitionRegistry) Register(definition *Definition) error {
+	if definition == nil {
 		return fmt.Errorf("definition should not be nil")
 	}
 
 	defer r.muDefinitions.Unlock()
 	r.muDefinitions.Lock()
 
-	if _, exists := r.definitionMap[def.Name()]; exists {
-		return fmt.Errorf("definition with name %s already exists", def.Name())
+	if _, exists := r.definitionMap[definition.Name()]; exists {
+		return fmt.Errorf("definition with name %s already exists", definition.Name())
 	}
 
-	r.definitionMap[def.Name()] = def
+	r.definitionMap[definition.Name()] = definition
 
 	return nil
 }
@@ -248,35 +248,6 @@ func (r *ObjectDefinitionRegistry) Names() []string {
 	names := make([]string, 0)
 	for name := range r.definitionMap {
 		names = append(names, name)
-	}
-
-	return names
-}
-
-func (r *ObjectDefinitionRegistry) NamesByType(requiredType reflector.Type) []string {
-	defer r.muDefinitions.Unlock()
-	r.muDefinitions.Lock()
-
-	names := make([]string, 0)
-
-	if requiredType == nil {
-		return names
-	}
-
-	for name, def := range r.definitionMap {
-
-		instanceType := def.Type()
-
-		if instanceType.CanConvert(requiredType) {
-			names = append(names, name)
-		} else if reflector.IsPointer(instanceType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
-			ptrType := reflector.ToPointer(instanceType)
-
-			if ptrType.Elem().CanConvert(requiredType) {
-				names = append(names, name)
-			}
-		}
-
 	}
 
 	return names

@@ -69,8 +69,11 @@ func (r *SingletonObjectRegistry) Find(filters ...filter.Filter) (any, error) {
 	}
 
 	if len(objectList) == 0 {
-		return nil, &NotFoundError{
-			//ErrorString: fmt.Sprintf("container: not found any instance of type %s", requiredType.Name()),
+		filterOpts := filter.Of(filters...)
+
+		return nil, ObjectNotFoundError{
+			name: filterOpts.Name,
+			typ:  filterOpts.Type,
 		}
 	}
 

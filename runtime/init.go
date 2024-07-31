@@ -6,5 +6,5 @@ import (
 
 func init() {
 	// runtime
-	component.Register(newCustomizer(), component.Named("procyonEnvironmentCustomizer"))
+	component.Register(newCustomizer(), component.Named("procyonRuntimeCustomizer"))
 }

@@ -4,31 +4,31 @@ import "fmt"
 
 type Resolver interface {
 	ContainsProperty(name string) bool
-	Property(name string) (string, bool)
-	PropertyOrDefault(name string, defaultValue string) string
+	Property(name string) (any, bool)
+	PropertyOrDefault(name string, defaultValue any) any
 	ResolvePlaceholders(text string) string
 	ResolveRequiredPlaceholders(text string) (string, error)
 }
 
-type SourcesResolver struct {
-	sources *Sources
+type MultiSourceResolver struct {
+	sources *SourceList
 }
 
-func NewSourcesResolver(sources *Sources) *SourcesResolver {
+func NewMultiSourceResolver(sources *SourceList) *MultiSourceResolver {
 	if sources == nil {
 		panic("sources cannot be nil")
 	}
 
-	return &SourcesResolver{
+	return &MultiSourceResolver{
 		sources: sources,
 	}
 }
 
-func (r *SourcesResolver) ContainsProperty(name string) bool {
+func (r *MultiSourceResolver) ContainsProperty(name string) bool {
 	return r.sources.Contains(name)
 }
 
-func (r *SourcesResolver) Property(name string) (string, bool) {
+func (r *MultiSourceResolver) Property(name string) (any, bool) {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
 			return value.(string), true
@@ -38,7 +38,7 @@ func (r *SourcesResolver) Property(name string) (string, bool) {
 	return "", false
 }
 
-func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue string) string {
+func (r *MultiSourceResolver) PropertyOrDefault(name string, defaultValue any) any {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
 			return value.(string)
@@ -48,16 +48,16 @@ func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue string) st
 	return defaultValue
 }
 
-func (r *SourcesResolver) ResolvePlaceholders(s string) string {
+func (r *MultiSourceResolver) ResolvePlaceholders(s string) string {
 	result, _ := r.resolveRequiredPlaceHolders(s, true)
 	return result
 }
 
-func (r *SourcesResolver) ResolveRequiredPlaceholders(s string) (string, error) {
+func (r *MultiSourceResolver) ResolveRequiredPlaceholders(s string) (string, error) {
 	return r.resolveRequiredPlaceHolders(s, false)
 }
 
-func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError bool) (string, error) {
+func (r *MultiSourceResolver) resolveRequiredPlaceHolders(s string, continueOnError bool) (string, error) {
 	var buf []byte
 
 	i := 0
@@ -80,10 +80,15 @@ func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError 
 					return "", fmt.Errorf("could not resolve placeholder '%s'", s[j:i+w+1])
 				}
 
+				stringValue, canConvert := value.(string)
+				if !canConvert && !continueOnError {
+					return "", fmt.Errorf("string values can only be used as placeholder '%s'", s[j:i+w+1])
+				}
+
 				if continueOnError {
 					buf = append(buf, s[j:i+w+1]...)
 				} else {
-					buf = append(buf, value...)
+					buf = append(buf, stringValue...)
 				}
 			}
 
@@ -99,7 +104,7 @@ func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError 
 	return string(buf) + s[i:], nil
 }
 
-func (r *SourcesResolver) getPlaceholderName(s string) (string, int) {
+func (r *MultiSourceResolver) getPlaceholderName(s string) (string, int) {
 	switch {
 	case s[0] == '{':
 		if len(s) > 2 && isSpecialVar(s[1]) && s[2] == '}' {

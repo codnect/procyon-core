@@ -1,21 +1,17 @@
 package config
 
 import (
-	"github.com/codnect/procyoncore/runtime/env"
-	"github.com/codnect/procyoncore/runtime/env/property"
+	"github.com/codnect/procyoncore/runtime"
+	"github.com/codnect/procyoncore/runtime/property"
 )
 
-type Importer interface {
-	Load(profiles []string, location string) ([]*Data, error)
-}
-
 type FileImporter struct {
-	resolver *FileResolver
+	resolver *FileLocationResolver
 }
 
-func NewFileImporter(environment env.Environment) *FileImporter {
-	resolver := NewFileResolver(environment, []property.SourceLoader{
-		property.NewYamlPropertySourceLoader(),
+func NewFileImporter(environment runtime.Environment) *FileImporter {
+	resolver := NewFileLocationResolver(environment, []property.SourceLoader{
+		property.NewYamlSourceLoader(),
 	})
 
 	return &FileImporter{
@@ -23,36 +19,13 @@ func NewFileImporter(environment env.Environment) *FileImporter {
 	}
 }
 
-func (i *FileImporter) Load(profiles []string, location string) ([]*Data, error) {
-	resources, err := i.resolveResources(profiles, location)
+func (i *FileImporter) Load(location string, profiles []string) ([]*Data, error) {
+	resources, err := i.resolver.Resolve(location, profiles)
 	if err != nil {
 		return nil, err
 	}
 
 	return i.loadResources(resources)
-}
-
-func (i *FileImporter) resolveResources(profiles []string, location string) ([]Resource, error) {
-	configResources := make([]Resource, 0)
-
-	if len(profiles) == 0 {
-		resources, err := i.resolver.Resolve(location)
-
-		if err != nil {
-			return nil, err
-		}
-
-		configResources = append(configResources, resources...)
-	} else {
-		resources, err := i.resolver.ResolveProfiles(profiles, location)
-
-		if err != nil {
-			return nil, err
-		}
-
-		configResources = append(configResources, resources...)
-	}
-	return configResources, nil
 }
 
 func (i *FileImporter) loadResources(resources []Resource) ([]*Data, error) {
@@ -65,7 +38,7 @@ func (i *FileImporter) loadResources(resources []Resource) ([]*Data, error) {
 		}
 
 		loader := resource.Loader()
-		source, err := loader.LoadSource(fileResource.Location(), fileResource.File())
+		source, err := loader.Load(fileResource.Location(), fileResource.File())
 
 		if err != nil {
 			return nil, err

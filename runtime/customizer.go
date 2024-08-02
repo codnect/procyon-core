@@ -1,12 +1,6 @@
 package runtime
 
-import (
-	"github.com/codnect/procyoncore/runtime/config"
-	"github.com/codnect/procyoncore/runtime/env"
-	"github.com/codnect/procyoncore/runtime/env/property"
-	"strings"
-)
-
+/*
 type customizer struct {
 	sourceLoaders []property.SourceLoader
 }
@@ -19,11 +13,11 @@ func newCustomizer() *customizer {
 	}
 }
 
-func (c *customizer) CustomizeEnvironment(environment env.Environment) error {
+func (c *customizer) CustomizeEnvironment(environment Environment) error {
 	return c.importConfig(environment)
 }
 
-func (c *customizer) importConfig(environment env.Environment) error {
+func (c *customizer) importConfig(environment Environment) error {
 	importer := config.NewFileImporter(environment)
 
 	defaultConfigs, err := importer.Load(environment.DefaultProfiles(), "resources")
@@ -34,7 +28,7 @@ func (c *customizer) importConfig(environment env.Environment) error {
 	sources := property.NewPropertySources()
 
 	for _, defaultConfig := range defaultConfigs {
-		sources.AddLast(defaultConfig.PropertySource())
+		sources.AddLast(defaultConfig.ArgumentsPropertySource())
 	}
 
 	activeProfiles := environment.ActiveProfiles()
@@ -64,14 +58,14 @@ func (c *customizer) importConfig(environment env.Environment) error {
 	return nil
 }
 
-func (c *customizer) loadActiveProfiles(importer config.Importer, environment env.Environment, propertySources *property.Sources, activeProfiles []string) error {
+func (c *customizer) loadActiveProfiles(importer config.Importer, environment Environment, propertySources *property.Sources, activeProfiles []string) error {
 	configs, err := importer.Load(activeProfiles, "config")
 	if err != nil {
 		return err
 	}
 
 	for _, cfg := range configs {
-		propertySource := cfg.PropertySource()
+		propertySource := cfg.ArgumentsPropertySource()
 		propertySources.AddFirst(propertySource)
 
 		err = c.activateIncludeProfiles(importer, environment, propertySources, propertySource)
@@ -83,7 +77,7 @@ func (c *customizer) loadActiveProfiles(importer config.Importer, environment en
 	return nil
 }
 
-func (c *customizer) activateIncludeProfiles(importer config.Importer, environment env.Environment, propertySources *property.Sources, source property.Source) error {
+func (c *customizer) activateIncludeProfiles(importer config.Importer, environment Environment, propertySources *property.Sources, source property.Source) error {
 	value, ok := source.Property("procyon.profiles.include")
 
 	if ok {
@@ -105,8 +99,9 @@ func (c *customizer) activateIncludeProfiles(importer config.Importer, environme
 	return nil
 }
 
-func (c *customizer) mergeSources(environment env.Environment, sources *property.Sources) {
+func (c *customizer) mergeSources(environment Environment, sources *property.Sources) {
 	for _, source := range sources.ToSlice() {
 		environment.PropertySources().AddLast(source)
 	}
 }
+*/

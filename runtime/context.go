@@ -3,13 +3,12 @@ package runtime
 import (
 	"context"
 	"github.com/codnect/procyoncore/component"
-	"github.com/codnect/procyoncore/runtime/env"
 )
 
 type Context interface {
 	context.Context
 
-	Environment() env.Environment
+	Environment() Environment
 	Container() component.Container
 	Close()
 }

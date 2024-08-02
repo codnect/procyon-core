@@ -8,21 +8,21 @@ import (
 
 type SourceLoader interface {
 	FileExtensions() []string
-	LoadSource(name string, reader io.Reader) (Source, error)
+	Load(name string, reader io.Reader) (Source, error)
 }
 
-type YamlPropertySourceLoader struct {
+type YamlSourceLoader struct {
 }
 
-func NewYamlPropertySourceLoader() *YamlPropertySourceLoader {
-	return &YamlPropertySourceLoader{}
+func NewYamlSourceLoader() *YamlSourceLoader {
+	return &YamlSourceLoader{}
 }
 
-func (l *YamlPropertySourceLoader) FileExtensions() []string {
+func (l *YamlSourceLoader) FileExtensions() []string {
 	return []string{"yml", "yaml"}
 }
 
-func (l *YamlPropertySourceLoader) LoadSource(name string, reader io.Reader) (Source, error) {
+func (l *YamlSourceLoader) Load(name string, reader io.Reader) (Source, error) {
 	loaded := make(map[string]interface{})
 
 	data, err := ioutil.ReadAll(reader)

@@ -1,8 +1,8 @@
-package env
+package runtime
 
 import (
 	"fmt"
-	"github.com/codnect/procyoncore/runtime/env/property"
+	"github.com/codnect/procyoncore/runtime/property"
 	"strings"
 	"sync"
 )
@@ -20,15 +20,19 @@ type Environment interface {
 	Merge(parent Environment)
 
 	Variables() Variables
-	PropertySources() *property.Sources
+	PropertySources() *property.SourceList
 	PropertyResolver() property.Resolver
+}
+
+type EnvironmentCustomizer interface {
+	CustomizeEnvironment(environment Environment) error
 }
 
 type DefaultEnvironment struct {
 	activeProfiles  map[string]struct{}
 	defaultProfiles map[string]struct{}
 
-	sources             *property.Sources
+	sources             *property.SourceList
 	resolver            property.Resolver
 	activeProfilesOnce  sync.Once
 	defaultProfilesOnce sync.Once
@@ -42,7 +46,7 @@ func NewDefaultEnvironment() *DefaultEnvironment {
 		defaultProfiles: map[string]struct{}{
 			"default": {},
 		},
-		sources:             property.NewPropertySources(),
+		sources:             property.NewSourceList(),
 		activeProfilesOnce:  sync.Once{},
 		defaultProfilesOnce: sync.Once{},
 		mu:                  sync.RWMutex{},
@@ -62,7 +66,7 @@ func (e *DefaultEnvironment) doGetActiveProfiles() {
 		propertyValue, ok := e.PropertyResolver().Property("procyon.profiles.active")
 
 		if ok {
-			activeProfiles := strings.Split(strings.TrimSpace(propertyValue), ",")
+			activeProfiles := strings.Split(strings.TrimSpace(propertyValue.(string)), ",")
 			err := e.SetActiveProfiles(activeProfiles...)
 
 			if err != nil {
@@ -91,7 +95,7 @@ func (e *DefaultEnvironment) doGetDefaultProfiles() {
 		propertyValue, ok := e.PropertyResolver().Property("procyon.profiles.default")
 
 		if ok {
-			defaultProfiles := strings.Split(strings.TrimSpace(propertyValue), ",")
+			defaultProfiles := strings.Split(strings.TrimSpace(propertyValue.(string)), ",")
 			err := e.SetDefaultProfiles(defaultProfiles...)
 
 			if err != nil {
@@ -233,7 +237,7 @@ func (e *DefaultEnvironment) Variables() Variables {
 	return nil
 }
 
-func (e *DefaultEnvironment) PropertySources() *property.Sources {
+func (e *DefaultEnvironment) PropertySources() *property.SourceList {
 	return e.sources
 }
 
@@ -242,7 +246,7 @@ func (e *DefaultEnvironment) PropertyResolver() property.Resolver {
 	e.mu.Lock()
 
 	if e.resolver == nil {
-		e.resolver = property.NewSourcesResolver(e.sources)
+		e.resolver = property.NewMultiSourceResolver(e.sources)
 	}
 
 	return e.resolver

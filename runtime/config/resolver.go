@@ -2,26 +2,25 @@ package config
 
 import (
 	"fmt"
-	"github.com/codnect/procyoncore/runtime/env"
-	"github.com/codnect/procyoncore/runtime/env/property"
+	"github.com/codnect/procyoncore/runtime"
+	"github.com/codnect/procyoncore/runtime/property"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-type Resolver interface {
-	Resolve(location string) ([]Resource, error)
-	ResolveProfiles(profiles []string, location string) ([]Resource, error)
+type LocationResolver interface {
+	Resolve(location string, profiles []string) ([]Resource, error)
 }
 
-type FileResolver struct {
-	environment   env.Environment
+type FileLocationResolver struct {
+	environment   runtime.Environment
 	sourceLoaders []property.SourceLoader
 	configName    string
 }
 
-func NewFileResolver(environment env.Environment, sourceLoaders []property.SourceLoader) *FileResolver {
+func NewFileLocationResolver(environment runtime.Environment, sourceLoaders []property.SourceLoader) *FileLocationResolver {
 	if environment == nil {
 		panic("environment cannot be nil")
 	}
@@ -30,13 +29,13 @@ func NewFileResolver(environment env.Environment, sourceLoaders []property.Sourc
 		panic("sourceLoaders cannot be empty")
 	}
 
-	resolver := &FileResolver{
+	resolver := &FileLocationResolver{
 		environment:   environment,
 		sourceLoaders: sourceLoaders,
 	}
 
 	configNameProperty := environment.PropertyResolver().PropertyOrDefault("procyon.config.name", "procyon")
-	resolver.configName = strings.TrimSpace(configNameProperty)
+	resolver.configName = strings.TrimSpace(configNameProperty.(string))
 
 	if resolver.configName == "" {
 		panic("configName cannot be empty or blank")
@@ -45,11 +44,7 @@ func NewFileResolver(environment env.Environment, sourceLoaders []property.Sourc
 	return resolver
 }
 
-func (r *FileResolver) Resolve(location string) ([]Resource, error) {
-	return r.ResolveProfiles(nil, location)
-}
-
-func (r *FileResolver) ResolveProfiles(profiles []string, location string) ([]Resource, error) {
+func (r *FileLocationResolver) Resolve(location string, profiles []string) ([]Resource, error) {
 	resources := make([]Resource, 0)
 	if profiles == nil {
 		resources = append(resources, r.getResources("", location)...)
@@ -67,7 +62,7 @@ func (r *FileResolver) ResolveProfiles(profiles []string, location string) ([]Re
 	return resources, nil
 }
 
-func (r *FileResolver) getResources(profile string, location string) []Resource {
+func (r *FileLocationResolver) getResources(profile string, location string) []Resource {
 	resources := make([]Resource, 0)
 	var configFile fs.File
 

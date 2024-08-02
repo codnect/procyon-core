@@ -12,11 +12,11 @@ type MapPropertySource struct {
 
 func NewMapPropertySource(name string, source map[string]interface{}) *MapPropertySource {
 	if strings.TrimSpace(name) == "" {
-		panic("env: name cannot be empty or blank")
+		panic("name cannot be empty or blank")
 	}
 
 	if source == nil {
-		panic("env: source cannot be nil")
+		panic("source cannot be nil")
 	}
 
 	return &MapPropertySource{

@@ -14,7 +14,7 @@ type SourceLoader interface {
 type YamlSourceLoader struct {
 }
 
-func NewYamlSourceLoader() *YamlSourceLoader {
+func newYamlSourceLoader() *YamlSourceLoader {
 	return &YamlSourceLoader{}
 }
 

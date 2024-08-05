@@ -294,8 +294,19 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 
 		if reflector.IsSlice(arg.Type()) {
 			sliceType := reflector.ToSlice(arg.Type())
+			val, err := sliceType.Instantiate()
+
+			if err != nil {
+				return nil, err
+			}
+
+			sliceType = reflector.ToSlice(reflector.ToPointer(reflector.TypeOfAny(val.Val())).Elem())
+
+			var result any
 			objectList := c.ListObjects(ctx, filter.ByType(sliceType.Elem()))
-			arguments = append(arguments, objectList)
+			result, err = sliceType.Append(objectList...)
+
+			arguments = append(arguments, result)
 			continue
 		}
 

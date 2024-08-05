@@ -4,11 +4,14 @@ import (
 	"context"
 	"github.com/codnect/procyoncore/component"
 	"github.com/codnect/procyoncore/component/filter"
+	"github.com/codnect/procyoncore/runtime"
+	"time"
 )
 
 func main() {
 
 	component.Register(NewUserController, component.Named("test"))
+	component.Register(NewUserController, component.Named("test2"))
 	component.Register(NewUserService)
 
 	objectContainer := component.NewObjectContainer()
@@ -16,15 +19,33 @@ func main() {
 		objectContainer.Definitions().Register(cmp.Definition())
 	}
 
-	instance, err := objectContainer.GetObject(context.Background(), filter.ByTypeOf[*UserController](), filter.ByName("23"))
+	var app runtime.Application
+	if app != nil {
 
+	}
+	lst := objectContainer.ListObjects(context.Background(), filter.ByTypeOf[*UserController](), filter.ByName("test"))
+	if len(lst) != 0 {
+
+	}
+
+	x, err := objectContainer.GetObject(context.Background(), filter.ByName("procyonRuntimeCustomizer"))
+	if x != nil {
+
+	}
 	if err != nil {
-		panic(err)
-	}
-
-	if instance != nil {
 
 	}
+}
+
+type MyEvent struct {
+}
+
+func (c MyEvent) EventSource() any {
+	return nil
+}
+
+func (c MyEvent) Time() time.Time {
+	return time.Time{}
 }
 
 type UserController struct {

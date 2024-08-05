@@ -1,51 +1,83 @@
 package config
 
 import (
-	"github.com/codnect/procyoncore/runtime"
-	"github.com/codnect/procyoncore/runtime/property"
+	"codnect.io/reflector"
+	"context"
+	"fmt"
 )
 
-type FileImporter struct {
-	resolver *FileLocationResolver
+type Importer struct {
+	resolvers []Resolver
+	loaders   []Loader
 }
 
-func NewFileImporter(environment runtime.Environment) *FileImporter {
-	resolver := NewFileLocationResolver(environment, []property.SourceLoader{
-		property.NewYamlSourceLoader(),
-	})
-
-	return &FileImporter{
-		resolver,
+func newImporter(resolvers []Resolver, loaders []Loader) *Importer {
+	return &Importer{
+		resolvers: resolvers,
+		loaders:   loaders,
 	}
 }
 
-func (i *FileImporter) Load(location string, profiles []string) ([]*Data, error) {
-	resources, err := i.resolver.Resolve(location, profiles)
+func (i *Importer) LoadConfigs(ctx context.Context, location string, profiles []string) ([]*Config, error) {
+	resources, err := i.resolve(ctx, location, profiles)
 	if err != nil {
 		return nil, err
 	}
 
-	return i.loadResources(resources)
+	return i.load(ctx, resources)
 }
 
-func (i *FileImporter) loadResources(resources []Resource) ([]*Data, error) {
-	configs := make([]*Data, 0)
+func (i *Importer) resolve(ctx context.Context, location string, profiles []string) ([]Resource, error) {
+	resources := make([]Resource, 0)
 
-	for _, resource := range resources {
-		fileResource, canConvert := resource.(*FileResource)
-		if !canConvert {
-			continue
-		}
-
-		loader := resource.Loader()
-		source, err := loader.Load(fileResource.Location(), fileResource.File())
+	for _, resolver := range i.resolvers {
+		resolved, err := resolver.Resolve(ctx, location, profiles)
 
 		if err != nil {
 			return nil, err
 		}
 
-		configs = append(configs, NewData(source))
+		resources = append(resources, resolved...)
 	}
 
-	return configs, nil
+	return resources, nil
+}
+
+func (i *Importer) load(ctx context.Context, resources []Resource) ([]*Config, error) {
+	loaded := make([]*Config, 0)
+
+	for _, resource := range resources {
+		loader, err := i.findLoader(resource)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var data *Config
+		data, err = loader.Load(ctx, resource)
+
+		loaded = append(loaded, data)
+	}
+
+	return loaded, nil
+}
+
+func (i *Importer) findLoader(resource Resource) (Loader, error) {
+	var result Loader
+	for _, loader := range i.loaders {
+		if loader.IsLoadable(resource) {
+
+			if result != nil {
+				return nil, fmt.Errorf("multiple loaders found for resource '%s'", reflector.TypeOfAny(resource).Name())
+			}
+
+			result = loader
+		}
+	}
+
+	if result == nil {
+		return nil, fmt.Errorf("no loader found for resource '%s'", reflector.TypeOfAny(resource).Name())
+	}
+
+	return result, nil
 }

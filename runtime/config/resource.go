@@ -20,7 +20,7 @@ type FileResource struct {
 	loader property.SourceLoader
 }
 
-func NewFileResource(path string, file fs.File, loader property.SourceLoader) *FileResource {
+func newFileResource(path string, file fs.File, loader property.SourceLoader) *FileResource {
 	if strings.TrimSpace(path) == "" {
 		panic("path cannot be empty or blank")
 	}

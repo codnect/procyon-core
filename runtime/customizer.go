@@ -1,15 +1,21 @@
 package runtime
 
-/*
+import (
+	"context"
+	"github.com/codnect/procyoncore/runtime/config"
+	"github.com/codnect/procyoncore/runtime/property"
+	"strings"
+)
+
 type customizer struct {
-	sourceLoaders []property.SourceLoader
+	loaders  []property.SourceLoader
+	importer *config.Importer
 }
 
-func newCustomizer() *customizer {
+func newCustomizer(loaders []property.SourceLoader, importer *config.Importer) *customizer {
 	return &customizer{
-		sourceLoaders: []property.SourceLoader{
-			property.NewYamlPropertySourceLoader(),
-		},
+		loaders:  loaders,
+		importer: importer,
 	}
 }
 
@@ -18,27 +24,26 @@ func (c *customizer) CustomizeEnvironment(environment Environment) error {
 }
 
 func (c *customizer) importConfig(environment Environment) error {
-	importer := config.NewFileImporter(environment)
+	defaultConfigs, err := c.importer.LoadConfigs(context.Background(), "resources", environment.DefaultProfiles())
 
-	defaultConfigs, err := importer.Load(environment.DefaultProfiles(), "resources")
 	if err != nil {
 		return err
 	}
 
-	sources := property.NewPropertySources()
+	sourceList := property.NewSourceList()
 
 	for _, defaultConfig := range defaultConfigs {
-		sources.AddLast(defaultConfig.ArgumentsPropertySource())
+		sourceList.AddLast(defaultConfig.PropertySource())
 	}
 
 	activeProfiles := environment.ActiveProfiles()
 
 	if len(activeProfiles) == 0 {
-		resolver := property.NewSourcesResolver(sources)
+		resolver := property.NewMultiSourceResolver(sourceList)
 		value, ok := resolver.Property("procyon.profiles.active")
 
 		if ok {
-			activeProfiles = strings.Split(strings.TrimSpace(value), ",")
+			activeProfiles = strings.Split(strings.TrimSpace(value.(string)), ",")
 		}
 	}
 
@@ -48,27 +53,27 @@ func (c *customizer) importConfig(environment Environment) error {
 			return err
 		}
 
-		err = c.loadActiveProfiles(importer, environment, sources, activeProfiles)
+		err = c.loadActiveProfiles(environment, sourceList, activeProfiles)
 		if err != nil {
 			return err
 		}
 	}
 
-	c.mergeSources(environment, sources)
+	c.mergeSources(environment, sourceList)
 	return nil
 }
 
-func (c *customizer) loadActiveProfiles(importer config.Importer, environment Environment, propertySources *property.Sources, activeProfiles []string) error {
-	configs, err := importer.Load(activeProfiles, "config")
+func (c *customizer) loadActiveProfiles(environment Environment, sourceList *property.SourceList, activeProfiles []string) error {
+	configs, err := c.importer.LoadConfigs(context.Background(), "config", activeProfiles)
 	if err != nil {
 		return err
 	}
 
 	for _, cfg := range configs {
-		propertySource := cfg.ArgumentsPropertySource()
-		propertySources.AddFirst(propertySource)
+		propertySource := cfg.PropertySource()
+		sourceList.AddFirst(propertySource)
 
-		err = c.activateIncludeProfiles(importer, environment, propertySources, propertySource)
+		err = c.activateIncludeProfiles(environment, sourceList, propertySource)
 		if err != nil {
 			return err
 		}
@@ -77,7 +82,7 @@ func (c *customizer) loadActiveProfiles(importer config.Importer, environment En
 	return nil
 }
 
-func (c *customizer) activateIncludeProfiles(importer config.Importer, environment Environment, propertySources *property.Sources, source property.Source) error {
+func (c *customizer) activateIncludeProfiles(environment Environment, sourceList *property.SourceList, source property.Source) error {
 	value, ok := source.Property("procyon.profiles.include")
 
 	if ok {
@@ -90,7 +95,7 @@ func (c *customizer) activateIncludeProfiles(importer config.Importer, environme
 			}
 		}
 
-		err := c.loadActiveProfiles(importer, environment, propertySources, profiles)
+		err := c.loadActiveProfiles(environment, sourceList, profiles)
 		if err != nil {
 			return err
 		}
@@ -99,9 +104,8 @@ func (c *customizer) activateIncludeProfiles(importer config.Importer, environme
 	return nil
 }
 
-func (c *customizer) mergeSources(environment Environment, sources *property.Sources) {
-	for _, source := range sources.ToSlice() {
+func (c *customizer) mergeSources(environment Environment, sourceList *property.SourceList) {
+	for _, source := range sourceList.ToSlice() {
 		environment.PropertySources().AddLast(source)
 	}
 }
-*/

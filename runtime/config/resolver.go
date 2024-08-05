@@ -1,50 +1,35 @@
 package config
 
 import (
+	"context"
 	"fmt"
-	"github.com/codnect/procyoncore/runtime"
 	"github.com/codnect/procyoncore/runtime/property"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-type LocationResolver interface {
-	Resolve(location string, profiles []string) ([]Resource, error)
+const (
+	FileName = "procyon"
+)
+
+type Resolver interface {
+	Resolve(ctx context.Context, location string, profiles []string) ([]Resource, error)
 }
 
-type FileLocationResolver struct {
-	environment   runtime.Environment
-	sourceLoaders []property.SourceLoader
-	configName    string
+type DefaultResolver struct {
+	loaders    []property.SourceLoader
+	configName string
 }
 
-func NewFileLocationResolver(environment runtime.Environment, sourceLoaders []property.SourceLoader) *FileLocationResolver {
-	if environment == nil {
-		panic("environment cannot be nil")
+func newDefaultResolver(loaders []property.SourceLoader) *DefaultResolver {
+	return &DefaultResolver{
+		loaders:    loaders,
+		configName: FileName,
 	}
-
-	if len(sourceLoaders) == 0 {
-		panic("sourceLoaders cannot be empty")
-	}
-
-	resolver := &FileLocationResolver{
-		environment:   environment,
-		sourceLoaders: sourceLoaders,
-	}
-
-	configNameProperty := environment.PropertyResolver().PropertyOrDefault("procyon.config.name", "procyon")
-	resolver.configName = strings.TrimSpace(configNameProperty.(string))
-
-	if resolver.configName == "" {
-		panic("configName cannot be empty or blank")
-	}
-
-	return resolver
 }
 
-func (r *FileLocationResolver) Resolve(location string, profiles []string) ([]Resource, error) {
+func (r *DefaultResolver) Resolve(ctx context.Context, location string, profiles []string) ([]Resource, error) {
 	resources := make([]Resource, 0)
 	if profiles == nil {
 		resources = append(resources, r.getResources("", location)...)
@@ -62,11 +47,13 @@ func (r *FileLocationResolver) Resolve(location string, profiles []string) ([]Re
 	return resources, nil
 }
 
-func (r *FileLocationResolver) getResources(profile string, location string) []Resource {
-	resources := make([]Resource, 0)
-	var configFile fs.File
+func (r *DefaultResolver) getResources(profile string, location string) []Resource {
+	var (
+		configFile fs.File
+		resources  = make([]Resource, 0)
+	)
 
-	for _, loader := range r.sourceLoaders {
+	for _, loader := range r.loaders {
 		extensions := loader.FileExtensions()
 
 		for _, extension := range extensions {
@@ -85,7 +72,7 @@ func (r *FileLocationResolver) getResources(profile string, location string) []R
 					continue
 				}
 
-				resources = append(resources, NewFileResource(filePath, configFile, loader))
+				resources = append(resources, newFileResource(filePath, configFile, loader))
 			}
 		}
 	}

@@ -4,16 +4,16 @@ import (
 	"github.com/codnect/procyoncore/runtime/property"
 )
 
-type Data struct {
+type Config struct {
 	source property.Source
 }
 
-func NewData(source property.Source) *Data {
-	return &Data{
+func New(source property.Source) *Config {
+	return &Config{
 		source,
 	}
 }
 
-func (d *Data) PropertySource() property.Source {
+func (d *Config) PropertySource() property.Source {
 	return d.source
 }

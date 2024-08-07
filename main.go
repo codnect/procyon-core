@@ -5,6 +5,7 @@ import (
 	"github.com/codnect/procyoncore/component"
 	"github.com/codnect/procyoncore/component/filter"
 	"github.com/codnect/procyoncore/runtime"
+	"github.com/codnect/procyoncore/runtime/property"
 	"time"
 )
 
@@ -35,6 +36,11 @@ func main() {
 	if err != nil {
 
 	}
+
+	property.NewMapSource("application", map[string]interface{}{
+		"key": "value",
+	})
+
 }
 
 type MyEvent struct {

@@ -34,14 +34,19 @@ type ObjectContainer struct {
 
 	scopes   map[string]Scope
 	muScopes *sync.RWMutex
+
+	createdListeners     []CreatedEventListener
+	initializedListeners []InitializedEventListener
 }
 
 func NewObjectContainer() *ObjectContainer {
 	return &ObjectContainer{
-		definitions: NewObjectDefinitionRegistry(),
-		singletons:  NewSingletonObjectRegistry(),
-		scopes:      make(map[string]Scope),
-		muScopes:    &sync.RWMutex{},
+		definitions:          NewObjectDefinitionRegistry(),
+		singletons:           NewSingletonObjectRegistry(),
+		scopes:               make(map[string]Scope),
+		muScopes:             &sync.RWMutex{},
+		createdListeners:     make([]CreatedEventListener, 0),
+		initializedListeners: make([]InitializedEventListener, 0),
 	}
 }
 
@@ -211,7 +216,7 @@ func (c *ObjectContainer) ScopeNames() []string {
 	c.muScopes.Lock()
 
 	scopeNames := make([]string, 0)
-	for scopeName, _ := range c.scopes {
+	for scopeName := range c.scopes {
 		scopeNames = append(scopeNames, scopeName)
 	}
 
@@ -283,8 +288,12 @@ func (c *ObjectContainer) CreateObject(ctx context.Context, definition *Definiti
 		return nil, fmt.Errorf("the number of provided arguments is wrong for definition %s", definition.Name())
 	}
 
-	//return c.initializeInstance(definition.name, instance)
-	return
+	object, err = c.initialize(ctx, definition, object)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.triggerCreatedListeners(ctx, definition, object)
 }
 
 func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
@@ -354,4 +363,47 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 	}
 
 	return arguments, nil
+}
+
+func (c *ObjectContainer) initialize(ctx context.Context, definition *Definition, object any) (any, error) {
+	// set properties
+
+	for _, listener := range c.initializedListeners {
+		initializedEvent := newInitializedEvent(definition, object)
+		result, err := listener.OnInitialized(ctx, initializedEvent)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if result == nil {
+			return nil, fmt.Errorf("listener '%s' returns nil object from OnInitialized", reflector.TypeOfAny(listener).Name())
+		}
+
+		object = result
+	}
+
+	// post construct
+
+	return object, nil
+}
+
+func (c *ObjectContainer) triggerCreatedListeners(ctx context.Context, definition *Definition, object any) (any, error) {
+
+	for _, listener := range c.createdListeners {
+		createdEvent := newCreatedEvent(definition, object)
+		result, err := listener.OnCreated(ctx, createdEvent)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if result == nil {
+			return nil, fmt.Errorf("listener '%s' returns nil object from OnCreated", reflector.TypeOfAny(listener).Name())
+		}
+
+		object = result
+	}
+
+	return object, nil
 }

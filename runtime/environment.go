@@ -19,8 +19,7 @@ type Environment interface {
 	SetDefaultProfiles(profiles ...string) error
 	Merge(parent Environment)
 
-	Variables() Variables
-	PropertySources() *property.SourceList
+	PropertySources() *property.Sources
 	PropertyResolver() property.Resolver
 }
 
@@ -32,7 +31,7 @@ type DefaultEnvironment struct {
 	activeProfiles  map[string]struct{}
 	defaultProfiles map[string]struct{}
 
-	sources             *property.SourceList
+	sources             *property.Sources
 	resolver            property.Resolver
 	activeProfilesOnce  sync.Once
 	defaultProfilesOnce sync.Once
@@ -46,7 +45,7 @@ func NewDefaultEnvironment() *DefaultEnvironment {
 		defaultProfiles: map[string]struct{}{
 			"default": {},
 		},
-		sources:             property.NewSourceList(),
+		sources:             property.NewSources(),
 		activeProfilesOnce:  sync.Once{},
 		defaultProfilesOnce: sync.Once{},
 		mu:                  sync.RWMutex{},
@@ -233,11 +232,7 @@ func (e *DefaultEnvironment) Merge(parent Environment) {
 	}
 }
 
-func (e *DefaultEnvironment) Variables() Variables {
-	return nil
-}
-
-func (e *DefaultEnvironment) PropertySources() *property.SourceList {
+func (e *DefaultEnvironment) PropertySources() *property.Sources {
 	return e.sources
 }
 
@@ -246,7 +241,7 @@ func (e *DefaultEnvironment) PropertyResolver() property.Resolver {
 	e.mu.Lock()
 
 	if e.resolver == nil {
-		e.resolver = property.NewMultiSourceResolver(e.sources)
+		e.resolver = property.NewSourcesResolver(e.sources.ToSlice()...)
 	}
 
 	return e.resolver

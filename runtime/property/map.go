@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-type MapPropertySource struct {
+type MapSource struct {
 	name   string
 	source map[string]interface{}
 }
 
-func NewMapPropertySource(name string, source map[string]interface{}) *MapPropertySource {
+func NewMapSource(name string, source map[string]interface{}) *MapSource {
 	if strings.TrimSpace(name) == "" {
 		panic("name cannot be empty or blank")
 	}
@@ -19,21 +19,21 @@ func NewMapPropertySource(name string, source map[string]interface{}) *MapProper
 		panic("source cannot be nil")
 	}
 
-	return &MapPropertySource{
+	return &MapSource{
 		name:   name,
 		source: flatMap(source),
 	}
 }
 
-func (m *MapPropertySource) Name() string {
+func (m *MapSource) Name() string {
 	return m.name
 }
 
-func (m *MapPropertySource) Source() any {
+func (m *MapSource) Source() any {
 	return m.source
 }
 
-func (m *MapPropertySource) ContainsProperty(name string) bool {
+func (m *MapSource) ContainsProperty(name string) bool {
 	if _, exists := m.source[name]; exists {
 		return true
 	}
@@ -41,7 +41,7 @@ func (m *MapPropertySource) ContainsProperty(name string) bool {
 	return false
 }
 
-func (m *MapPropertySource) Property(name string) (any, bool) {
+func (m *MapSource) Property(name string) (any, bool) {
 	if value, exists := m.source[name]; exists {
 		return value, true
 	}
@@ -49,7 +49,7 @@ func (m *MapPropertySource) Property(name string) (any, bool) {
 	return nil, false
 }
 
-func (m *MapPropertySource) PropertyOrDefault(name string, defaultValue any) any {
+func (m *MapSource) PropertyOrDefault(name string, defaultValue any) any {
 	value, exists := m.Property(name)
 	if !exists {
 		return defaultValue
@@ -58,7 +58,7 @@ func (m *MapPropertySource) PropertyOrDefault(name string, defaultValue any) any
 	return value
 }
 
-func (m *MapPropertySource) PropertyNames() []string {
+func (m *MapSource) PropertyNames() []string {
 	names := make([]string, 0)
 
 	for name, _ := range m.source {

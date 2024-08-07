@@ -35,5 +35,5 @@ func (l *YamlSourceLoader) Load(name string, reader io.Reader) (Source, error) {
 		return nil, err
 	}
 
-	return NewMapPropertySource(name, loaded), nil
+	return NewMapSource(name, loaded), nil
 }

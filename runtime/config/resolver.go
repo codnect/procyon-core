@@ -13,23 +13,23 @@ const (
 	FileName = "procyon"
 )
 
-type Resolver interface {
-	Resolve(ctx context.Context, location string, profiles []string) ([]Resource, error)
+type ResourceResolver interface {
+	ResolveResources(ctx context.Context, location string, profiles []string) ([]Resource, error)
 }
 
-type DefaultResolver struct {
+type DefaultResourceResolver struct {
 	loaders    []property.SourceLoader
 	configName string
 }
 
-func newDefaultResolver(loaders []property.SourceLoader) *DefaultResolver {
-	return &DefaultResolver{
+func newDefaultDefaultResolver(loaders []property.SourceLoader) *DefaultResourceResolver {
+	return &DefaultResourceResolver{
 		loaders:    loaders,
 		configName: FileName,
 	}
 }
 
-func (r *DefaultResolver) Resolve(ctx context.Context, location string, profiles []string) ([]Resource, error) {
+func (r *DefaultResourceResolver) ResolveResources(ctx context.Context, location string, profiles []string) ([]Resource, error) {
 	resources := make([]Resource, 0)
 	if profiles == nil {
 		resources = append(resources, r.getResources("", location)...)
@@ -47,7 +47,7 @@ func (r *DefaultResolver) Resolve(ctx context.Context, location string, profiles
 	return resources, nil
 }
 
-func (r *DefaultResolver) getResources(profile string, location string) []Resource {
+func (r *DefaultResourceResolver) getResources(profile string, location string) []Resource {
 	var (
 		configFile fs.File
 		resources  = make([]Resource, 0)

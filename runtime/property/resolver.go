@@ -10,25 +10,27 @@ type Resolver interface {
 	ResolveRequiredPlaceholders(text string) (string, error)
 }
 
-type MultiSourceResolver struct {
-	sources *SourceList
+type SourcesResolver struct {
+	sources *Sources
 }
 
-func NewMultiSourceResolver(sources *SourceList) *MultiSourceResolver {
-	if sources == nil {
-		panic("sources cannot be nil")
+func NewSourcesResolver(sources ...Source) *SourcesResolver {
+	sourceList := NewSources()
+
+	for _, source := range sources {
+		sourceList.AddLast(source)
 	}
 
-	return &MultiSourceResolver{
-		sources: sources,
+	return &SourcesResolver{
+		sourceList,
 	}
 }
 
-func (r *MultiSourceResolver) ContainsProperty(name string) bool {
+func (r *SourcesResolver) ContainsProperty(name string) bool {
 	return r.sources.Contains(name)
 }
 
-func (r *MultiSourceResolver) Property(name string) (any, bool) {
+func (r *SourcesResolver) Property(name string) (any, bool) {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
 			return value.(string), true
@@ -38,7 +40,7 @@ func (r *MultiSourceResolver) Property(name string) (any, bool) {
 	return "", false
 }
 
-func (r *MultiSourceResolver) PropertyOrDefault(name string, defaultValue any) any {
+func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue any) any {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
 			return value.(string)
@@ -48,16 +50,16 @@ func (r *MultiSourceResolver) PropertyOrDefault(name string, defaultValue any) a
 	return defaultValue
 }
 
-func (r *MultiSourceResolver) ResolvePlaceholders(s string) string {
+func (r *SourcesResolver) ResolvePlaceholders(s string) string {
 	result, _ := r.resolveRequiredPlaceHolders(s, true)
 	return result
 }
 
-func (r *MultiSourceResolver) ResolveRequiredPlaceholders(s string) (string, error) {
+func (r *SourcesResolver) ResolveRequiredPlaceholders(s string) (string, error) {
 	return r.resolveRequiredPlaceHolders(s, false)
 }
 
-func (r *MultiSourceResolver) resolveRequiredPlaceHolders(s string, continueOnError bool) (string, error) {
+func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError bool) (string, error) {
 	var buf []byte
 
 	i := 0
@@ -104,7 +106,7 @@ func (r *MultiSourceResolver) resolveRequiredPlaceHolders(s string, continueOnEr
 	return string(buf) + s[i:], nil
 }
 
-func (r *MultiSourceResolver) getPlaceholderName(s string) (string, int) {
+func (r *SourcesResolver) getPlaceholderName(s string) (string, int) {
 	switch {
 	case s[0] == '{':
 		if len(s) > 2 && isSpecialVar(s[1]) && s[2] == '}' {

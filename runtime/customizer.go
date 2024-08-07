@@ -7,39 +7,39 @@ import (
 	"strings"
 )
 
-type customizer struct {
+type defaultCustomizer struct {
 	loaders  []property.SourceLoader
 	importer *config.Importer
 }
 
-func newCustomizer(loaders []property.SourceLoader, importer *config.Importer) *customizer {
-	return &customizer{
+func newDefaultCustomizer(loaders []property.SourceLoader, importer *config.Importer) *defaultCustomizer {
+	return &defaultCustomizer{
 		loaders:  loaders,
 		importer: importer,
 	}
 }
 
-func (c *customizer) CustomizeEnvironment(environment Environment) error {
+func (c *defaultCustomizer) CustomizeEnvironment(environment Environment) error {
 	return c.importConfig(environment)
 }
 
-func (c *customizer) importConfig(environment Environment) error {
-	defaultConfigs, err := c.importer.LoadConfigs(context.Background(), "resources", environment.DefaultProfiles())
+func (c *defaultCustomizer) importConfig(environment Environment) error {
+	defaultConfigs, err := c.importer.Import(context.Background(), "resources", environment.DefaultProfiles())
 
 	if err != nil {
 		return err
 	}
 
-	sourceList := property.NewSourceList()
+	sources := property.NewSources()
 
 	for _, defaultConfig := range defaultConfigs {
-		sourceList.AddLast(defaultConfig.PropertySource())
+		sources.AddLast(defaultConfig.PropertySource())
 	}
 
 	activeProfiles := environment.ActiveProfiles()
 
 	if len(activeProfiles) == 0 {
-		resolver := property.NewMultiSourceResolver(sourceList)
+		resolver := property.NewSourcesResolver(sources.ToSlice()...)
 		value, ok := resolver.Property("procyon.profiles.active")
 
 		if ok {
@@ -53,18 +53,18 @@ func (c *customizer) importConfig(environment Environment) error {
 			return err
 		}
 
-		err = c.loadActiveProfiles(environment, sourceList, activeProfiles)
+		err = c.loadActiveProfiles(environment, sources, activeProfiles)
 		if err != nil {
 			return err
 		}
 	}
 
-	c.mergeSources(environment, sourceList)
+	c.mergeSources(environment, sources)
 	return nil
 }
 
-func (c *customizer) loadActiveProfiles(environment Environment, sourceList *property.SourceList, activeProfiles []string) error {
-	configs, err := c.importer.LoadConfigs(context.Background(), "config", activeProfiles)
+func (c *defaultCustomizer) loadActiveProfiles(environment Environment, sourceList *property.Sources, activeProfiles []string) error {
+	configs, err := c.importer.Import(context.Background(), "config", activeProfiles)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (c *customizer) loadActiveProfiles(environment Environment, sourceList *pro
 	return nil
 }
 
-func (c *customizer) activateIncludeProfiles(environment Environment, sourceList *property.SourceList, source property.Source) error {
+func (c *defaultCustomizer) activateIncludeProfiles(environment Environment, sourceList *property.Sources, source property.Source) error {
 	value, ok := source.Property("procyon.profiles.include")
 
 	if ok {
@@ -104,7 +104,7 @@ func (c *customizer) activateIncludeProfiles(environment Environment, sourceList
 	return nil
 }
 
-func (c *customizer) mergeSources(environment Environment, sourceList *property.SourceList) {
+func (c *defaultCustomizer) mergeSources(environment Environment, sourceList *property.Sources) {
 	for _, source := range sourceList.ToSlice() {
 		environment.PropertySources().AddLast(source)
 	}

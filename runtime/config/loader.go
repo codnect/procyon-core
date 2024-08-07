@@ -9,7 +9,7 @@ import (
 
 type Loader interface {
 	IsLoadable(resource Resource) bool
-	Load(ctx context.Context, resource Resource) (*Config, error)
+	LoadConfig(ctx context.Context, resource Resource) (*Config, error)
 }
 
 type FileLoader struct {
@@ -24,7 +24,7 @@ func (l *FileLoader) IsLoadable(resource Resource) bool {
 	return canConvert
 }
 
-func (l *FileLoader) Load(ctx context.Context, resource Resource) (*Config, error) {
+func (l *FileLoader) LoadConfig(ctx context.Context, resource Resource) (*Config, error) {
 	if resource == nil {
 		return nil, errors.New("resource cannot be nil")
 	}

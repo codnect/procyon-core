@@ -4,7 +4,7 @@ import "github.com/codnect/procyoncore/component"
 
 func init() {
 	// resolvers
-	component.Register(newDefaultResolver, component.Named("procyonDefaultConfigResolver"))
+	component.Register(newDefaultDefaultResolver, component.Named("procyonDefaultConfigResourceResolver"))
 	// loaders
 	component.Register(newFileLoader, component.Named("procyonConfigFileLoader"))
 	// other

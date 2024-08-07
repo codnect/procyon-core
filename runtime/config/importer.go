@@ -7,18 +7,18 @@ import (
 )
 
 type Importer struct {
-	resolvers []Resolver
+	resolvers []ResourceResolver
 	loaders   []Loader
 }
 
-func newImporter(resolvers []Resolver, loaders []Loader) *Importer {
+func newImporter(resolvers []ResourceResolver, loaders []Loader) *Importer {
 	return &Importer{
 		resolvers: resolvers,
 		loaders:   loaders,
 	}
 }
 
-func (i *Importer) LoadConfigs(ctx context.Context, location string, profiles []string) ([]*Config, error) {
+func (i *Importer) Import(ctx context.Context, location string, profiles []string) ([]*Config, error) {
 	resources, err := i.resolve(ctx, location, profiles)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (i *Importer) resolve(ctx context.Context, location string, profiles []stri
 	resources := make([]Resource, 0)
 
 	for _, resolver := range i.resolvers {
-		resolved, err := resolver.Resolve(ctx, location, profiles)
+		resolved, err := resolver.ResolveResources(ctx, location, profiles)
 
 		if err != nil {
 			return nil, err
@@ -54,7 +54,7 @@ func (i *Importer) load(ctx context.Context, resources []Resource) ([]*Config, e
 		}
 
 		var data *Config
-		data, err = loader.Load(ctx, resource)
+		data, err = loader.LoadConfig(ctx, resource)
 
 		loaded = append(loaded, data)
 	}

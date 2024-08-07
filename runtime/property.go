@@ -9,25 +9,25 @@ const (
 	NonOptionArgs = "nonOptionArgs"
 )
 
-type ArgumentsPropertySource struct {
+type ArgumentsSource struct {
 	args *Arguments
 }
 
-func NewArgsPropertySource(args *Arguments) *ArgumentsPropertySource {
-	return &ArgumentsPropertySource{
+func NewArgumentsSource(args *Arguments) *ArgumentsSource {
+	return &ArgumentsSource{
 		args: args,
 	}
 }
 
-func (s *ArgumentsPropertySource) Name() string {
+func (s *ArgumentsSource) Name() string {
 	return "commandLineArgs"
 }
 
-func (s *ArgumentsPropertySource) Source() any {
+func (s *ArgumentsSource) Source() any {
 	return s.args
 }
 
-func (s *ArgumentsPropertySource) ContainsProperty(name string) bool {
+func (s *ArgumentsSource) ContainsProperty(name string) bool {
 	if NonOptionArgs == name {
 		return len(s.args.NonOptionArgs()) != 0
 	}
@@ -35,7 +35,7 @@ func (s *ArgumentsPropertySource) ContainsProperty(name string) bool {
 	return s.args.ContainsOption(name)
 }
 
-func (s *ArgumentsPropertySource) Property(name string) (any, bool) {
+func (s *ArgumentsSource) Property(name string) (any, bool) {
 	if NonOptionArgs == name {
 		nonOptValues := s.args.NonOptionArgs()
 
@@ -55,7 +55,7 @@ func (s *ArgumentsPropertySource) Property(name string) (any, bool) {
 	return nil, false
 }
 
-func (s *ArgumentsPropertySource) PropertyOrDefault(name string, defaultValue any) any {
+func (s *ArgumentsSource) PropertyOrDefault(name string, defaultValue any) any {
 	val, ok := s.Property(name)
 	if !ok {
 		return defaultValue
@@ -64,24 +64,24 @@ func (s *ArgumentsPropertySource) PropertyOrDefault(name string, defaultValue an
 	return val
 }
 
-func (s *ArgumentsPropertySource) PropertyNames() []string {
+func (s *ArgumentsSource) PropertyNames() []string {
 	return s.args.OptionNames()
 }
 
-func (s *ArgumentsPropertySource) OptionValues(name string) []string {
+func (s *ArgumentsSource) OptionValues(name string) []string {
 	return s.args.OptionValues(name)
 }
 
-func (s *ArgumentsPropertySource) NonOptionArgs() []string {
+func (s *ArgumentsSource) NonOptionArgs() []string {
 	return s.args.NonOptionArgs()
 }
 
-type EnvironmentPropertySource struct {
+type EnvironmentSource struct {
 	variables map[string]string
 }
 
-func NewEnvPropertySource() *EnvironmentPropertySource {
-	source := &EnvironmentPropertySource{
+func NewEnvironmentSource() *EnvironmentSource {
+	source := &EnvironmentSource{
 		variables: make(map[string]string, 0),
 	}
 
@@ -98,11 +98,11 @@ func NewEnvPropertySource() *EnvironmentPropertySource {
 	return source
 }
 
-func (s *EnvironmentPropertySource) Name() string {
+func (s *EnvironmentSource) Name() string {
 	return "systemEnvironment"
 }
 
-func (s *EnvironmentPropertySource) Source() any {
+func (s *EnvironmentSource) Source() any {
 	copyOfVariables := make(map[string]string)
 	for key, value := range s.variables {
 		copyOfVariables[key] = value
@@ -111,7 +111,7 @@ func (s *EnvironmentPropertySource) Source() any {
 	return copyOfVariables
 }
 
-func (s *EnvironmentPropertySource) Property(name string) (any, bool) {
+func (s *EnvironmentSource) Property(name string) (any, bool) {
 	propertyName, exists := s.checkPropertyName(strings.ToLower(name))
 
 	if exists {
@@ -131,7 +131,7 @@ func (s *EnvironmentPropertySource) Property(name string) (any, bool) {
 	return nil, false
 }
 
-func (s *EnvironmentPropertySource) PropertyOrDefault(name string, defaultValue any) any {
+func (s *EnvironmentSource) PropertyOrDefault(name string, defaultValue any) any {
 	value, ok := s.Property(name)
 
 	if !ok {
@@ -141,7 +141,7 @@ func (s *EnvironmentPropertySource) PropertyOrDefault(name string, defaultValue 
 	return value
 }
 
-func (s *EnvironmentPropertySource) ContainsProperty(name string) bool {
+func (s *EnvironmentSource) ContainsProperty(name string) bool {
 	_, exists := s.checkPropertyName(strings.ToUpper(name))
 	if exists {
 		return true
@@ -155,7 +155,7 @@ func (s *EnvironmentPropertySource) ContainsProperty(name string) bool {
 	return false
 }
 
-func (s *EnvironmentPropertySource) PropertyNames() []string {
+func (s *EnvironmentSource) PropertyNames() []string {
 	keys := make([]string, 0, len(s.variables))
 
 	for key, _ := range s.variables {
@@ -165,7 +165,7 @@ func (s *EnvironmentPropertySource) PropertyNames() []string {
 	return keys
 }
 
-func (s *EnvironmentPropertySource) checkPropertyName(name string) (string, bool) {
+func (s *EnvironmentSource) checkPropertyName(name string) (string, bool) {
 	if s.contains(name) {
 		return name, true
 	}
@@ -191,7 +191,7 @@ func (s *EnvironmentPropertySource) checkPropertyName(name string) (string, bool
 	return "", false
 }
 
-func (s *EnvironmentPropertySource) contains(name string) bool {
+func (s *EnvironmentSource) contains(name string) bool {
 	if _, ok := s.variables[name]; ok {
 		return true
 	}

@@ -11,19 +11,19 @@ type Source interface {
 	PropertyNames() []string
 }
 
-type SourceList struct {
+type Sources struct {
 	sources []Source
 	mu      sync.RWMutex
 }
 
-func NewSourceList() *SourceList {
-	return &SourceList{
+func NewSources() *Sources {
+	return &Sources{
 		sources: make([]Source, 0),
 		mu:      sync.RWMutex{},
 	}
 }
 
-func (s *SourceList) Contains(name string) bool {
+func (s *Sources) Contains(name string) bool {
 	defer s.mu.Unlock()
 	s.mu.Lock()
 
@@ -36,7 +36,7 @@ func (s *SourceList) Contains(name string) bool {
 	return false
 }
 
-func (s *SourceList) Find(name string) (Source, bool) {
+func (s *Sources) Find(name string) (Source, bool) {
 	defer s.mu.Unlock()
 	s.mu.Lock()
 
@@ -49,7 +49,7 @@ func (s *SourceList) Find(name string) (Source, bool) {
 	return nil, false
 }
 
-func (s *SourceList) AddFirst(source Source) {
+func (s *Sources) AddFirst(source Source) {
 	defer s.mu.Unlock()
 	s.mu.Lock()
 
@@ -63,7 +63,7 @@ func (s *SourceList) AddFirst(source Source) {
 	s.sources[0] = source
 }
 
-func (s *SourceList) AddLast(source Source) {
+func (s *Sources) AddLast(source Source) {
 	defer s.mu.Unlock()
 	s.mu.Lock()
 
@@ -71,7 +71,7 @@ func (s *SourceList) AddLast(source Source) {
 	s.sources = append(s.sources, source)
 }
 
-func (s *SourceList) AddAtIndex(index int, source Source) {
+func (s *Sources) AddAtIndex(index int, source Source) {
 	defer s.mu.Unlock()
 	s.mu.Lock()
 
@@ -87,7 +87,7 @@ func (s *SourceList) AddAtIndex(index int, source Source) {
 	s.sources[index] = source
 }
 
-func (s *SourceList) Remove(name string) Source {
+func (s *Sources) Remove(name string) Source {
 	source, index := s.findPropertySourceByName(name)
 
 	if index != -1 {
@@ -99,7 +99,7 @@ func (s *SourceList) Remove(name string) Source {
 	return source
 }
 
-func (s *SourceList) Replace(name string, source Source) {
+func (s *Sources) Replace(name string, source Source) {
 	_, index := s.findPropertySourceByName(name)
 
 	if index != -1 {
@@ -107,11 +107,11 @@ func (s *SourceList) Replace(name string, source Source) {
 	}
 }
 
-func (s *SourceList) Count() int {
+func (s *Sources) Count() int {
 	return len(s.sources)
 }
 
-func (s *SourceList) PrecedenceOf(source Source) int {
+func (s *Sources) PrecedenceOf(source Source) int {
 	if source == nil {
 		return -1
 	}
@@ -120,13 +120,13 @@ func (s *SourceList) PrecedenceOf(source Source) int {
 	return index
 }
 
-func (s *SourceList) ToSlice() []Source {
+func (s *Sources) ToSlice() []Source {
 	sources := make([]Source, len(s.sources))
 	copy(sources, s.sources)
 	return sources
 }
 
-func (s *SourceList) removeIfPresent(source Source) {
+func (s *Sources) removeIfPresent(source Source) {
 	if source == nil {
 		return
 	}
@@ -138,7 +138,7 @@ func (s *SourceList) removeIfPresent(source Source) {
 	}
 }
 
-func (s *SourceList) findPropertySourceByName(name string) (Source, int) {
+func (s *Sources) findPropertySourceByName(name string) (Source, int) {
 	for index, source := range s.sources {
 
 		if source.Name() == name {

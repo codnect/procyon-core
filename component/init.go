@@ -48,3 +48,7 @@ type BeforeInitialization interface {
 type AfterInitialization interface {
 	AfterInit(ctx CreationContext) (any, error)
 }
+
+type Initialization interface {
+	DoInit(ctx context.Context) error
+}

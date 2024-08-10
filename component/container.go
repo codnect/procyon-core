@@ -366,6 +366,14 @@ func (c *ObjectContainer) initialize(ctx context.Context, definition *Definition
 		return nil, err
 	}
 
+	if initialization, ok := object.(Initialization); ok {
+		err = initialization.DoInit(ctx)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	result, err = c.triggerAfterInits(ctx, definition, object)
 	if err != nil {
 		return nil, err

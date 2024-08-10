@@ -24,7 +24,7 @@ func NewConditionEvaluator(definitionRegistry DefinitionRegistry) ConditionEvalu
 	}
 }
 
-func (e ConditionEvaluator) ShouldSkip(conditions []Condition) bool {
+func (e ConditionEvaluator) Evaluate(conditions []Condition) bool {
 	if len(conditions) == 0 {
 		return false
 	}

@@ -35,18 +35,18 @@ type ObjectContainer struct {
 	scopes   map[string]Scope
 	muScopes *sync.RWMutex
 
-	createdListeners     []CreatedEventListener
-	initializedListeners []InitializedEventListener
+	beforeInits []BeforeInitialization
+	afterInits  []AfterInitialization
 }
 
 func NewObjectContainer() *ObjectContainer {
 	return &ObjectContainer{
-		definitions:          NewObjectDefinitionRegistry(),
-		singletons:           NewSingletonObjectRegistry(),
-		scopes:               make(map[string]Scope),
-		muScopes:             &sync.RWMutex{},
-		createdListeners:     make([]CreatedEventListener, 0),
-		initializedListeners: make([]InitializedEventListener, 0),
+		definitions: NewObjectDefinitionRegistry(),
+		singletons:  NewSingletonObjectRegistry(),
+		scopes:      make(map[string]Scope),
+		muScopes:    &sync.RWMutex{},
+		beforeInits: make([]BeforeInitialization, 0),
+		afterInits:  make([]AfterInitialization, 0),
 	}
 }
 
@@ -288,12 +288,7 @@ func (c *ObjectContainer) CreateObject(ctx context.Context, definition *Definiti
 		return nil, fmt.Errorf("the number of provided arguments is wrong for definition %s", definition.Name())
 	}
 
-	object, err = c.initialize(ctx, definition, object)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.triggerCreatedListeners(ctx, definition, object)
+	return c.initialize(ctx, definition, object)
 }
 
 func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
@@ -366,40 +361,49 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 }
 
 func (c *ObjectContainer) initialize(ctx context.Context, definition *Definition, object any) (any, error) {
-	// set properties
+	result, err := c.triggerAfterInits(ctx, definition, object)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, listener := range c.initializedListeners {
-		initializedEvent := newInitializedEvent(definition, object)
-		result, err := listener.OnInitialized(ctx, initializedEvent)
+	result, err = c.triggerAfterInits(ctx, definition, object)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (c *ObjectContainer) triggerBeforeInits(ctx context.Context, definition *Definition, object any) (any, error) {
+	for _, initialization := range c.beforeInits {
+		initContext := newInitContext(definition, object)
+		result, err := initialization.BeforeInit(initContext)
 
 		if err != nil {
 			return nil, err
 		}
 
 		if result == nil {
-			return nil, fmt.Errorf("listener '%s' returns nil object from OnInitialized", reflector.TypeOfAny(listener).Name())
+			return nil, fmt.Errorf("'%s' returns nil object from BeforeInit", reflector.TypeOfAny(initialization).Name())
 		}
 
 		object = result
 	}
 
-	// post construct
-
 	return object, nil
 }
 
-func (c *ObjectContainer) triggerCreatedListeners(ctx context.Context, definition *Definition, object any) (any, error) {
-
-	for _, listener := range c.createdListeners {
-		createdEvent := newCreatedEvent(definition, object)
-		result, err := listener.OnCreated(ctx, createdEvent)
+func (c *ObjectContainer) triggerAfterInits(ctx context.Context, definition *Definition, object any) (any, error) {
+	for _, initialization := range c.afterInits {
+		initContext := newInitContext(definition, object)
+		result, err := initialization.AfterInit(initContext)
 
 		if err != nil {
 			return nil, err
 		}
 
 		if result == nil {
-			return nil, fmt.Errorf("listener '%s' returns nil object from OnCreated", reflector.TypeOfAny(listener).Name())
+			return nil, fmt.Errorf("'%s' returns nil object from AfterInit", reflector.TypeOfAny(initialization).Name())
 		}
 
 		object = result

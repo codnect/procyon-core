@@ -1,29 +1,50 @@
 package component
 
-type InitializationContext struct {
+import (
+	"context"
+	"time"
+)
+
+type CreationContext struct {
+	ctx        context.Context
 	definition *Definition
 	object     any
 }
 
-func newInitContext(definition *Definition, object any) InitializationContext {
-	return InitializationContext{
-		definition: definition,
-		object:     object,
+func NewCreationContext(ctx context.Context, definition *Definition, object any) CreationContext {
+	return CreationContext{
+		ctx: ctx,
 	}
 }
 
-func (c InitializationContext) Definition() *Definition {
+func (c CreationContext) Deadline() (deadline time.Time, ok bool) {
+	return c.ctx.Deadline()
+}
+
+func (c CreationContext) Done() <-chan struct{} {
+	return c.Done()
+}
+
+func (c CreationContext) Err() error {
+	return c.Err()
+}
+
+func (c CreationContext) Value(key any) any {
+	return c.Value(key)
+}
+
+func (c CreationContext) Definition() *Definition {
 	return c.definition
 }
 
-func (c InitializationContext) Object() any {
+func (c CreationContext) Object() any {
 	return c.object
 }
 
 type BeforeInitialization interface {
-	BeforeInit(ctx InitializationContext) (any, error)
+	BeforeInit(ctx CreationContext) (any, error)
 }
 
 type AfterInitialization interface {
-	AfterInit(ctx InitializationContext) (any, error)
+	AfterInit(ctx CreationContext) (any, error)
 }

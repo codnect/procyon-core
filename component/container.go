@@ -361,7 +361,7 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 }
 
 func (c *ObjectContainer) initialize(ctx context.Context, definition *Definition, object any) (any, error) {
-	result, err := c.triggerAfterInits(ctx, definition, object)
+	result, err := c.triggerBeforeInits(ctx, definition, object)
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +376,7 @@ func (c *ObjectContainer) initialize(ctx context.Context, definition *Definition
 
 func (c *ObjectContainer) triggerBeforeInits(ctx context.Context, definition *Definition, object any) (any, error) {
 	for _, initialization := range c.beforeInits {
-		initContext := newInitContext(definition, object)
+		initContext := NewCreationContext(ctx, definition, object)
 		result, err := initialization.BeforeInit(initContext)
 
 		if err != nil {
@@ -395,8 +395,8 @@ func (c *ObjectContainer) triggerBeforeInits(ctx context.Context, definition *De
 
 func (c *ObjectContainer) triggerAfterInits(ctx context.Context, definition *Definition, object any) (any, error) {
 	for _, initialization := range c.afterInits {
-		initContext := newInitContext(definition, object)
-		result, err := initialization.AfterInit(initContext)
+		creationContext := NewCreationContext(ctx, definition, object)
+		result, err := initialization.AfterInit(creationContext)
 
 		if err != nil {
 			return nil, err

@@ -109,11 +109,21 @@ func (r *SingletonObjectRegistry) List(filters ...filter.Filter) []any {
 		}
 
 		if objectType.CanConvert(filterOpts.Type) {
-			objectList = append(objectList, r.singletonObjects[objectName])
+			if reflector.IsStruct(objectType) && reflector.IsStruct(filterOpts.Type) {
+				if matchTypeName(objectType, filterOpts.Type) {
+					objectList = append(objectList, r.singletonObjects[objectName])
+				}
+			} else {
+				objectList = append(objectList, r.singletonObjects[objectName])
+			}
 		} else if reflector.IsPointer(objectType) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
 			ptrType := reflector.ToPointer(objectType)
 
 			if ptrType.Elem().CanConvert(filterOpts.Type) {
+				if reflector.IsStruct(ptrType) && reflector.IsStruct(filterOpts.Type) && !matchTypeName(ptrType, filterOpts.Type) {
+					continue
+				}
+
 				val, err := ptrType.Elem().Value()
 
 				if err == nil {

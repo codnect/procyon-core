@@ -2,6 +2,7 @@ package component
 
 import (
 	"codnect.io/reflector"
+	"context"
 	"fmt"
 	"github.com/codnect/procyoncore/component/filter"
 	"sync"
@@ -15,6 +16,10 @@ var (
 type Component struct {
 	definition *Definition
 	conditions []Condition
+}
+
+type Initialization interface {
+	DoInit(ctx context.Context) error
 }
 
 func createComponent(constructor Constructor, options ...Option) *Component {
@@ -94,12 +99,20 @@ func List(filters ...filter.Filter) []*Component {
 		}
 
 		if definition.Type().CanConvert(filterOpts.Type) {
-			componentList = append(componentList, component)
+			if reflector.IsStruct(definition.Type()) && reflector.IsStruct(filterOpts.Type) && matchTypeName(definition.Type(), filterOpts.Type) {
+				componentList = append(componentList, component)
+			} else {
+				componentList = append(componentList, component)
+			}
 		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
 			pointerType := reflector.ToPointer(definition.Type())
 
 			if pointerType.Elem().CanConvert(filterOpts.Type) {
-				componentList = append(componentList, component)
+				if reflector.IsStruct(pointerType) && reflector.IsStruct(filterOpts.Type) && matchTypeName(pointerType, filterOpts.Type) {
+					componentList = append(componentList, component)
+				} else {
+					componentList = append(componentList, component)
+				}
 			}
 		}
 	}

@@ -4,67 +4,64 @@ import (
 	"context"
 	"github.com/codnect/procyoncore/component"
 	"github.com/codnect/procyoncore/component/filter"
+	"github.com/codnect/procyoncore/event"
 	"github.com/codnect/procyoncore/runtime"
-	"github.com/codnect/procyoncore/runtime/property"
-	"time"
 )
 
 func main() {
 
 	component.Register(NewUserController, component.Named("test"))
-	component.Register(NewUserController, component.Named("test2"))
 	component.Register(NewUserService)
+	component.Register(newP)
 
 	objectContainer := component.NewObjectContainer()
+
 	for _, cmp := range component.List() {
 		objectContainer.Definitions().Register(cmp.Definition())
 	}
 
-	var app runtime.Application
-	if app != nil {
+	err := objectContainer.Start(context.Background())
 
-	}
-	lst := objectContainer.ListObjects(context.Background(), filter.ByTypeOf[*UserController](), filter.ByName("test"))
-	if len(lst) != 0 {
-
-	}
-
-	x, err := objectContainer.GetObject(context.Background(), filter.ByName("procyonRuntimeCustomizer"))
-	if x != nil {
-
-	}
 	if err != nil {
-
+		panic(err)
 	}
 
-	property.NewMapSource("application", map[string]interface{}{
-		"key": "value",
+	var r runtime.Application
+	if r != nil {
+	}
+
+	obj, _ := objectContainer.GetObject(context.Background(), filter.ByTypeOf[event.Multicaster]())
+
+	multicaster := obj.(event.Multicaster)
+	multicaster.MulticastEvent(nil, nil)
+
+	event.ListenAsync(func(ctx context.Context, event event.Event) error {
+		return nil
 	})
-
 }
 
-type MyEvent struct {
+type MyProcessor struct {
 }
 
-func (c MyEvent) EventSource() any {
-	return nil
+func newP(controller *UserController) *MyProcessor {
+	return &MyProcessor{}
 }
 
-func (c MyEvent) Time() time.Time {
-	return time.Time{}
+func (c MyProcessor) ProcessBeforeInit(ctx context.Context, object any) (any, error) {
+	return object, nil
+}
+
+func (c MyProcessor) ProcessAfterInit(ctx context.Context, object any) (any, error) {
+	return object, nil
 }
 
 type UserController struct {
 	userService *UserService
 }
 
-func (c *UserController) saveUser() {
-
-}
-
-func NewUserController(userService *UserService) *UserController {
+func NewUserController() *UserController {
 	return &UserController{
-		userService: userService,
+		userService: nil,
 	}
 }
 

@@ -227,12 +227,24 @@ func (r *ObjectDefinitionRegistry) List(filters ...filter.Filter) []*Definition 
 		}
 
 		if definition.Type().CanConvert(filterOpts.Type) {
-			definitionList = append(definitionList, definition)
+			if reflector.IsStruct(definition.Type()) && reflector.IsStruct(filterOpts.Type) {
+				if matchTypeName(definition.Type(), filterOpts.Type) {
+					definitionList = append(definitionList, definition)
+				}
+			} else {
+				definitionList = append(definitionList, definition)
+			}
 		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
 			pointerType := reflector.ToPointer(definition.Type())
 
 			if pointerType.Elem().CanConvert(filterOpts.Type) {
-				definitionList = append(definitionList, definition)
+				if reflector.IsStruct(pointerType) && reflector.IsStruct(filterOpts.Type) {
+					if matchTypeName(pointerType, filterOpts.Type) {
+						definitionList = append(definitionList, definition)
+					}
+				} else {
+					definitionList = append(definitionList, definition)
+				}
 			}
 		}
 

@@ -6,18 +6,18 @@ import (
 )
 
 type Condition interface {
-	Matches(ctx ConditionContext) bool
+	MatchesCondition(ctx ConditionContext) bool
 }
 
 type ConditionContext struct {
-	ctx      context.Context
-	registry DefinitionRegistry
+	ctx       context.Context
+	container Container
 }
 
-func newConditionContext(ctx context.Context, registry DefinitionRegistry) ConditionContext {
+func newConditionContext(ctx context.Context, container Container) ConditionContext {
 	return ConditionContext{
-		ctx:      ctx,
-		registry: registry,
+		ctx:       ctx,
+		container: container,
 	}
 }
 
@@ -37,33 +37,33 @@ func (c ConditionContext) Value(key any) any {
 	return c.Value(key)
 }
 
-func (c ConditionContext) DefinitionRegistry() DefinitionRegistry {
-	return c.registry
+func (c ConditionContext) Container() Container {
+	return c.container
 }
 
 type ConditionEvaluator struct {
-	registry DefinitionRegistry
+	container Container
 }
 
-func NewConditionEvaluator(registry DefinitionRegistry) ConditionEvaluator {
-	if registry == nil {
-		panic("definition registry cannot be nil")
+func NewConditionEvaluator(container Container) ConditionEvaluator {
+	if container == nil {
+		panic("container cannot be nil")
 	}
 
 	return ConditionEvaluator{
-		registry: registry,
+		container: container,
 	}
 }
 
 func (e ConditionEvaluator) Evaluate(ctx context.Context, conditions []Condition) bool {
 	if len(conditions) == 0 {
-		return false
+		return true
 	}
 
-	conditionContext := newConditionContext(ctx, e.registry)
+	conditionContext := newConditionContext(ctx, e.container)
 
 	for _, condition := range conditions {
-		if !condition.Matches(conditionContext) {
+		if !condition.MatchesCondition(conditionContext) {
 			return false
 		}
 	}

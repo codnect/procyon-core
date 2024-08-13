@@ -1,25 +1,49 @@
 package condition
 
-import "github.com/codnect/procyoncore/component"
+import (
+	"codnect.io/reflector"
+	"github.com/codnect/procyoncore/component"
+	"github.com/codnect/procyoncore/component/filter"
+)
 
 type OnTypeCondition struct {
+	typ reflector.Type
 }
 
 func OnType[T any]() *OnTypeCondition {
-	return nil
+	return &OnTypeCondition{
+		typ: reflector.TypeOf[T](),
+	}
 }
 
-func (c *OnTypeCondition) Matches(ctx component.ConditionContext) bool {
+func (c *OnTypeCondition) MatchesCondition(ctx component.ConditionContext) bool {
+	container := ctx.Container()
+	definitions := container.Definitions().List(filter.ByType(c.typ))
+
+	if len(definitions) != 0 {
+		return true
+	}
+
 	return false
 }
 
 type OnMissingTypeCondition struct {
+	missingType reflector.Type
 }
 
 func OnMissingType[T any]() *OnMissingTypeCondition {
-	return nil
+	return &OnMissingTypeCondition{
+		missingType: reflector.TypeOf[T](),
+	}
 }
 
-func (c *OnMissingTypeCondition) Matches(ctx component.ConditionContext) bool {
+func (c *OnMissingTypeCondition) MatchesCondition(ctx component.ConditionContext) bool {
+	container := ctx.Container()
+	definitions := container.Definitions().List(filter.ByType(c.missingType))
+
+	if len(definitions) == 0 {
+		return true
+	}
+
 	return false
 }

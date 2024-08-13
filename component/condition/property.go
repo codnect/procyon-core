@@ -1,9 +1,9 @@
 package condition
 
 import (
-	"github.com/codnect/procyoncore/component"
-	"github.com/codnect/procyoncore/component/filter"
-	"github.com/codnect/procyoncore/runtime"
+	"codnect.io/procyon-core/component"
+	"codnect.io/procyon-core/component/filter"
+	"codnect.io/procyon-core/runtime"
 )
 
 type OnPropertyCondition struct {

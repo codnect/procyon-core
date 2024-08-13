@@ -1,7 +1,7 @@
 package condition
 
 import (
-	"github.com/codnect/procyoncore/component"
+	"codnect.io/procyon-core/component"
 )
 
 type OnObjectCondition struct {

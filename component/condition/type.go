@@ -1,9 +1,9 @@
 package condition
 
 import (
+	"codnect.io/procyon-core/component"
+	"codnect.io/procyon-core/component/filter"
 	"codnect.io/reflector"
-	"github.com/codnect/procyoncore/component"
-	"github.com/codnect/procyoncore/component/filter"
 )
 
 type OnTypeCondition struct {

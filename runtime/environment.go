@@ -1,9 +1,9 @@
 package runtime
 
 import (
+	"codnect.io/procyon-core/runtime/property"
 	"context"
 	"fmt"
-	"github.com/codnect/procyoncore/runtime/property"
 	"strings"
 	"sync"
 )

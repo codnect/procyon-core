@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/codnect/procyoncore/runtime/property"
+	"codnect.io/procyon-core/runtime/property"
 	"io/fs"
 	"path/filepath"
 	"strings"

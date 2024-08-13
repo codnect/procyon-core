@@ -1,9 +1,9 @@
 package config
 
 import (
+	"codnect.io/procyon-core/runtime/property"
 	"context"
 	"fmt"
-	"github.com/codnect/procyoncore/runtime/property"
 	"io/fs"
 	"os"
 	"path/filepath"

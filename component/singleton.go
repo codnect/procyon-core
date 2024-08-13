@@ -1,10 +1,10 @@
 package component
 
 import (
+	"codnect.io/procyon-core/component/filter"
 	"codnect.io/reflector"
 	"context"
 	"fmt"
-	"github.com/codnect/procyoncore/component/filter"
 	"sync"
 )
 

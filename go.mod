@@ -1,4 +1,4 @@
-module github.com/codnect/procyoncore
+module codnect.io/procyon-core
 
 go 1.22.0
 

@@ -1,6 +1,6 @@
 package property
 
-import "github.com/codnect/procyoncore/component"
+import "codnect.io/procyon-core/component"
 
 func init() {
 	// loaders

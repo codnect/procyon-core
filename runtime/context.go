@@ -1,8 +1,8 @@
 package runtime
 
 import (
+	"codnect.io/procyon-core/component"
 	"context"
-	"github.com/codnect/procyoncore/component"
 )
 
 type Context interface {

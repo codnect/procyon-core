@@ -1,9 +1,9 @@
 package runtime
 
 import (
+	"codnect.io/procyon-core/event"
 	"context"
 	"errors"
-	"github.com/codnect/procyoncore/event"
 	"sync"
 )
 

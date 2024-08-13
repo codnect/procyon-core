@@ -42,7 +42,7 @@ func (c *Component) Definition() *Definition {
 func (c *Component) Conditions() []Condition {
 	copyOfConditions := make([]Condition, 0)
 
-	for _, condition := range copyOfConditions {
+	for _, condition := range c.conditions {
 		copyOfConditions = append(copyOfConditions, condition)
 	}
 

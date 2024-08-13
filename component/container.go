@@ -25,8 +25,8 @@ type Container interface {
 	RegisterScope(name string, scope Scope) error
 	ScopeNames() []string
 	FindScope(name string) (Scope, error)
-	AddPostProcessor(processor ObjectProcessor) error
-	PostProcessorCount() int
+	AddObjectProcessor(processor ObjectProcessor) error
+	ObjectProcessorCount() int
 }
 
 type ObjectContainer struct {
@@ -296,7 +296,7 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 		return nil, errors.New("definition cannot be nil")
 	}
 
-	constructorFunc := definition.constructor
+	constructorFunc := definition.Constructor()
 	argsCount := len(definition.ConstructorArguments())
 
 	if argsCount != 0 && len(args) == 0 {
@@ -468,24 +468,25 @@ func (c *ObjectContainer) applyProcessorsAfterInit(ctx context.Context, object a
 
 func (c *ObjectContainer) loadObjectProcessors(ctx context.Context) error {
 
-	postProcessors := c.Definitions().List(filter.ByTypeOf[ObjectProcessor]())
+	/*
+		postProcessors := c.Definitions().List(filter.ByTypeOf[component.ObjectProcessor]())
 
-	checker := newProcessorChecker(c, c.ObjectProcessorCount()+len(postProcessors)+1)
-	_ = c.AddObjectProcessor(checker)
+		checker := component.newProcessorChecker(c, c.ObjectProcessorCount()+len(postProcessors)+1)
+		_ = c.AddObjectProcessor(checker)
 
-	for _, processorDefinition := range postProcessors {
-		processor, err := c.GetObject(ctx, filter.ByName(processorDefinition.Name()))
+		for _, processorDefinition := range postProcessors {
+			processor, err := c.GetObject(ctx, filter.ByName(processorDefinition.Name()))
 
-		if err != nil {
-			return err
-		}
+			if err != nil {
+				return err
+			}
 
-		err = c.AddObjectProcessor(processor.(ObjectProcessor))
+			err = c.AddObjectProcessor(processor.(component.ObjectProcessor))
 
-		if err != nil {
-			return err
-		}
-	}
+			if err != nil {
+				return err
+			}
+		}*/
 
 	return nil
 }

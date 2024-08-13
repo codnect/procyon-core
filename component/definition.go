@@ -2,6 +2,7 @@ package component
 
 import (
 	"codnect.io/reflector"
+	"errors"
 	"fmt"
 	"github.com/codnect/procyoncore/component/filter"
 	"strings"
@@ -184,7 +185,7 @@ func (r *ObjectDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, 
 	definitionList := r.List(filters...)
 
 	if len(definitionList) > 1 {
-		return nil, fmt.Errorf("definitions cannot be distinguished because too many matching found")
+		return nil, errors.New("definitions cannot be distinguished because too many matching found")
 	}
 
 	if len(definitionList) == 0 {

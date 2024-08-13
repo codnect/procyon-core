@@ -1,13 +1,12 @@
 package runtime
 
 import (
+	"context"
 	"fmt"
 	"github.com/codnect/procyoncore/runtime/property"
 	"strings"
 	"sync"
 )
-
-type Variables map[string]string
 
 type Environment interface {
 	ActiveProfiles() []string
@@ -23,8 +22,8 @@ type Environment interface {
 	PropertyResolver() property.Resolver
 }
 
-type EnvironmentCustomizer interface {
-	CustomizeEnvironment(environment Environment) error
+type EnvironmentConfigurer interface {
+	ConfigureEnvironment(ctx context.Context, environment Environment) error
 }
 
 type DefaultEnvironment struct {

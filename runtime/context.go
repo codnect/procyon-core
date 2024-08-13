@@ -10,9 +10,8 @@ type Context interface {
 
 	Environment() Environment
 	Container() component.Container
-	Close()
 }
 
-type ContextCustomizer interface {
-	CustomizeContext(ctx Context) error
+type ContextConfigurer interface {
+	ConfigureContext(ctx Context) error
 }

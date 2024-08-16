@@ -1,10 +1,6 @@
 package runtime
 
 type Application interface {
+	Context() Context
 	Run(args ...string) error
-	Exit() int
-}
-
-type ApplicationRunner interface {
-	Run(ctx Context, args *Arguments) error
 }

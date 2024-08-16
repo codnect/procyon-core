@@ -314,7 +314,8 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 			return nil, err
 		}
 
-		if reflector.TypeOfAny(results[0]).ReflectValue().IsZero() {
+		resultType := reflector.TypeOfAny(results[0])
+		if (reflector.IsPointer(resultType) || reflector.IsInterface(resultType)) && resultType.ReflectValue().IsZero() {
 			return nil, fmt.Errorf("constructor function '%s' returns nil", constructorFunc.Name())
 		}
 
@@ -327,7 +328,9 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 			return nil, err
 		}
 
-		if reflector.TypeOfAny(results[0]).ReflectValue().IsZero() {
+		resultType := reflector.TypeOfAny(results[0])
+
+		if (reflector.IsPointer(resultType) || reflector.IsInterface(resultType)) && resultType.ReflectValue().IsZero() {
 			return nil, fmt.Errorf("constructor function '%s' returns nil", constructorFunc.Name())
 		}
 

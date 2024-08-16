@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"codnect.io/procyon-core/runtime/property"
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -20,10 +19,6 @@ type Environment interface {
 
 	PropertySources() *property.Sources
 	PropertyResolver() property.Resolver
-}
-
-type EnvironmentConfigurer interface {
-	ConfigureEnvironment(ctx context.Context, environment Environment) error
 }
 
 type DefaultEnvironment struct {

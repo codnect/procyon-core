@@ -8,6 +8,10 @@ import (
 type Context interface {
 	context.Context
 
+	Start() error
+	Stop() error
+	IsRunning() bool
+
 	Environment() Environment
 	Container() component.Container
 }

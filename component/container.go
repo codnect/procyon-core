@@ -12,9 +12,6 @@ import (
 )
 
 type Container interface {
-	Start(ctx context.Context) error
-	Stop(ctx context.Context) error
-	IsRunning() bool
 	GetObject(ctx context.Context, filters ...filter.Filter) (any, error)
 	ListObjects(ctx context.Context, filters ...filter.Filter) []any
 	ContainsObject(name string) bool
@@ -54,46 +51,6 @@ func NewObjectContainer() *ObjectContainer {
 	}
 }
 
-func (c *ObjectContainer) Start(ctx context.Context) error {
-	defer c.mu.Unlock()
-	c.mu.Lock()
-
-	if c.running {
-		return errors.New("container is already started")
-	}
-
-	err := c.loadObjectProcessors(ctx)
-	if err != nil {
-		return err
-	}
-
-	err = c.loadSingletonObjects(ctx)
-	if err != nil {
-		return err
-	}
-
-	c.running = true
-	return nil
-}
-
-func (c *ObjectContainer) Stop(ctx context.Context) error {
-	defer c.mu.Unlock()
-	c.mu.Lock()
-
-	if !c.running {
-		return errors.New("container is already stopped")
-	}
-
-	c.running = false
-	return nil
-}
-
-func (c *ObjectContainer) IsRunning() bool {
-	defer c.mu.Unlock()
-	c.mu.Lock()
-
-	return false
-}
 func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filter) (any, error) {
 	ctx = contextWithHolder(ctx)
 
@@ -490,23 +447,6 @@ func (c *ObjectContainer) loadObjectProcessors(ctx context.Context) error {
 				return err
 			}
 		}*/
-
-	return nil
-}
-
-func (c *ObjectContainer) loadSingletonObjects(ctx context.Context) error {
-
-	for _, definition := range c.Definitions().List() {
-		if !definition.IsSingleton() {
-			continue
-		}
-
-		_, err := c.GetObject(ctx, filter.ByName(definition.Name()))
-
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }

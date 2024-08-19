@@ -22,7 +22,7 @@ type DefaultResourceResolver struct {
 	configName string
 }
 
-func newDefaultDefaultResolver(loaders []property.SourceLoader) *DefaultResourceResolver {
+func NewDefaultResourceResolver(loaders []property.SourceLoader) *DefaultResourceResolver {
 	return &DefaultResourceResolver{
 		loaders:    loaders,
 		configName: FileName,

@@ -11,7 +11,7 @@ type Importer struct {
 	loaders   []Loader
 }
 
-func newImporter(resolvers []ResourceResolver, loaders []Loader) *Importer {
+func NewImporter(resolvers []ResourceResolver, loaders []Loader) *Importer {
 	return &Importer{
 		resolvers: resolvers,
 		loaders:   loaders,

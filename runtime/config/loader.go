@@ -15,7 +15,7 @@ type Loader interface {
 type FileLoader struct {
 }
 
-func newFileLoader() *FileLoader {
+func NewFileLoader() *FileLoader {
 	return &FileLoader{}
 }
 

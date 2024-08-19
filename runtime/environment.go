@@ -235,7 +235,7 @@ func (e *DefaultEnvironment) PropertyResolver() property.Resolver {
 	e.mu.Lock()
 
 	if e.resolver == nil {
-		e.resolver = property.NewSourcesResolver(e.sources.ToSlice()...)
+		e.resolver = property.NewSourcesResolver(e.sources)
 	}
 
 	return e.resolver

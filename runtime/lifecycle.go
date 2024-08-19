@@ -18,6 +18,6 @@ type LifecycleProperties struct {
 	ShutdownTimeout time.Duration `prop:"shutdown-timeout" default:"30000"`
 }
 
-func NewLifecycleProperties() *ServerProperties {
-	return &ServerProperties{}
+func NewLifecycleProperties() *LifecycleProperties {
+	return &LifecycleProperties{}
 }

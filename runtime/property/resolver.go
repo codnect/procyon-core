@@ -1,6 +1,8 @@
 package property
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Resolver interface {
 	ContainsProperty(name string) bool
@@ -14,15 +16,9 @@ type SourcesResolver struct {
 	sources *Sources
 }
 
-func NewSourcesResolver(sources ...Source) *SourcesResolver {
-	sourceList := NewSources()
-
-	for _, source := range sources {
-		sourceList.AddLast(source)
-	}
-
+func NewSourcesResolver(sources *Sources) *SourcesResolver {
 	return &SourcesResolver{
-		sourceList,
+		sources: sources,
 	}
 }
 

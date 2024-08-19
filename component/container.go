@@ -73,7 +73,7 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		object, err = c.Singletons().OrElseCreate(objectName, func(ctx context.Context) (any, error) {
 
 			if log.IsDebugEnabled() {
-				log.D(ctx, "Creating singleton object of type '{}' under package '{}'", rawName(definition.Type()), definition.Type().PackagePath())
+				log.D(ctx, "Creating singleton object of type '{}.{}'", definition.Type().PackageName(), rawName(definition.Type()))
 			}
 
 			return c.createObject(ctx, definition, nil)

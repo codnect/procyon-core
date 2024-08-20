@@ -11,6 +11,8 @@ type Module struct {
 }
 
 func (m Module) InitModule() error {
+	// core
+	component.Register(newConfigContextConfigurer, component.Named("procyonConfigContextConfigurer"))
 	// runtime/config
 	component.Register(config.NewDefaultResourceResolver, component.Named("procyonDefaultConfigResourceResolver"))
 	component.Register(config.NewFileLoader, component.Named("procyonConfigFileLoader"))

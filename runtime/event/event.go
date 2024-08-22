@@ -2,7 +2,7 @@ package event
 
 import "time"
 
-type Event interface {
+type ApplicationEvent interface {
 	EventSource() any
 
 	Time() time.Time

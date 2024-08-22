@@ -1,16 +1,10 @@
 package event
 
-import (
-	"context"
-	"errors"
-	"sync"
-)
-
+/*
 type Multicaster interface {
-	AddListener(listener Listener) error
-	MulticastEvent(ctx context.Context, event Event) error
-	RemoveListener(listener Listener) error
-	RemoveAllListeners()
+	ListenerRegistry
+
+	MulticastEvent(ctx context.Context, event ApplicationEvent) error
 }
 
 type SimpleMulticaster struct {
@@ -36,7 +30,7 @@ func (m *SimpleMulticaster) AddListener(eventListener Listener) error {
 	return nil
 }
 
-func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event Event) error {
+func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event ApplicationEvent) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
@@ -88,3 +82,5 @@ func (m *SimpleMulticaster) RemoveAllListeners() {
 	m.mu.Lock()
 	m.listeners = make([]Listener, 0)
 }
+
+*/

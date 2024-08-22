@@ -1,10 +1,17 @@
 package event
 
-/*
-type Multicaster interface {
-	ListenerRegistry
+import (
+	"context"
+	"errors"
+	"sync"
+)
 
+type Multicaster interface {
+	AddEventListener(listener Listener) error
 	MulticastEvent(ctx context.Context, event ApplicationEvent) error
+	MulticastEventAsync(ctx context.Context, event ApplicationEvent) error
+	RemoveEventListener(listener Listener) error
+	RemoveAllEventListeners()
 }
 
 type SimpleMulticaster struct {
@@ -18,15 +25,15 @@ func NewSimpleMulticaster() *SimpleMulticaster {
 	}
 }
 
-func (m *SimpleMulticaster) AddListener(eventListener Listener) error {
+func (m *SimpleMulticaster) AddEventListener(listener Listener) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
-	if eventListener == nil {
+	if listener == nil {
 		return errors.New("event listener cannot be nil")
 	}
 
-	m.listeners = append(m.listeners, eventListener)
+	m.listeners = append(m.listeners, listener)
 	return nil
 }
 
@@ -43,15 +50,11 @@ func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event Applicatio
 	}
 
 	for _, listener := range m.listeners {
-		if listener.Supports(event) {
-			if listener.SupportsAsyncExecution() {
-				// invoke listener async
-			} else {
-				err := listener.OnEvent(ctx, event)
+		if listener.SupportsEvent(event) {
+			err := listener.OnEvent(ctx, event)
 
-				if err != nil {
-					return err
-				}
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -59,7 +62,33 @@ func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event Applicatio
 	return nil
 }
 
-func (m *SimpleMulticaster) RemoveListener(eventListener Listener) error {
+func (m *SimpleMulticaster) MulticastEventAsync(ctx context.Context, event ApplicationEvent) error {
+	defer m.mu.Unlock()
+	m.mu.Lock()
+
+	if ctx == nil {
+		return errors.New("context cannot be nil")
+	}
+
+	if event == nil {
+		return errors.New("event cannot be nil")
+	}
+
+	for _, listener := range m.listeners {
+		if listener.SupportsEvent(event) {
+			go func() {
+				err := listener.OnEvent(ctx, event)
+				if err != nil {
+					// handle error
+				}
+			}()
+		}
+	}
+
+	return nil
+}
+
+func (m *SimpleMulticaster) RemoveEventListener(eventListener Listener) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 
@@ -77,10 +106,8 @@ func (m *SimpleMulticaster) RemoveListener(eventListener Listener) error {
 	return nil
 }
 
-func (m *SimpleMulticaster) RemoveAllListeners() {
+func (m *SimpleMulticaster) RemoveAllEventListeners() {
 	defer m.mu.Unlock()
 	m.mu.Lock()
 	m.listeners = make([]Listener, 0)
 }
-
-*/

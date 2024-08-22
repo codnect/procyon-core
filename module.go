@@ -2,8 +2,10 @@ package core
 
 import (
 	"codnect.io/procyon-core/component"
+	"codnect.io/procyon-core/component/condition"
 	"codnect.io/procyon-core/runtime"
 	"codnect.io/procyon-core/runtime/config"
+	"codnect.io/procyon-core/runtime/event"
 	"codnect.io/procyon-core/runtime/property"
 )
 
@@ -13,6 +15,9 @@ type Module struct {
 func (m Module) InitModule() error {
 	// core
 	component.Register(newConfigContextConfigurer, component.Named("procyonConfigContextConfigurer"))
+	// runtime/event
+	component.Register(event.NewSimpleMulticaster, component.Named("procyonEventMulticaster")).
+		ConditionalOn(condition.OnMissingType[event.Multicaster]())
 	// runtime/config
 	component.Register(config.NewDefaultResourceResolver, component.Named("procyonDefaultConfigResourceResolver"))
 	component.Register(config.NewFileLoader, component.Named("procyonConfigFileLoader"))

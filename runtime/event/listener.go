@@ -7,13 +7,7 @@ import (
 
 type Listener interface {
 	OnEvent(ctx context.Context, event ApplicationEvent) error
-	Supports(event ApplicationEvent) bool
-}
-
-type ListenerRegistry interface {
-	AddListener(listener Listener) error
-	RemoveListener(listener Listener) error
-	RemoveAllListeners()
+	SupportsEvent(event ApplicationEvent) bool
 }
 
 func Listen[E ApplicationEvent](handler func(ctx context.Context, event E) error) Listener {
@@ -27,14 +21,14 @@ type listenerAdapter[E any] struct {
 }
 
 func (a listenerAdapter[E]) OnEvent(ctx context.Context, event ApplicationEvent) error {
-	if !a.Supports(event) {
+	if !a.SupportsEvent(event) {
 		return errors.New("")
 	}
 
 	return a.handler(ctx, event.(E))
 }
 
-func (a listenerAdapter[E]) Supports(event ApplicationEvent) bool {
+func (a listenerAdapter[E]) SupportsEvent(event ApplicationEvent) bool {
 	if _, ok := event.(E); ok {
 		return true
 	}

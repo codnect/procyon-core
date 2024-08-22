@@ -13,6 +13,7 @@ type Context interface {
 	Start() error
 	Stop() error
 	IsRunning() bool
+	AddEventListeners(listeners ...event.Listener) error
 
 	Environment() Environment
 	Container() component.Container

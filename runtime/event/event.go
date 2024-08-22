@@ -4,6 +4,5 @@ import "time"
 
 type ApplicationEvent interface {
 	EventSource() any
-
-	Time() time.Time
+	EventTime() time.Time
 }

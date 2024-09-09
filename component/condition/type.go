@@ -19,12 +19,8 @@ func OnType[T any]() *OnTypeCondition {
 func (c *OnTypeCondition) MatchesCondition(ctx component.ConditionContext) bool {
 	container := ctx.Container()
 	definitions := container.Definitions().List(filter.ByType(c.typ))
-
-	if len(definitions) != 0 {
-		return true
-	}
-
-	return false
+	singletons := container.Singletons().List(filter.ByType(c.typ))
+	return len(definitions) != 0 || len(singletons) != 0
 }
 
 type OnMissingTypeCondition struct {
@@ -40,10 +36,6 @@ func OnMissingType[T any]() *OnMissingTypeCondition {
 func (c *OnMissingTypeCondition) MatchesCondition(ctx component.ConditionContext) bool {
 	container := ctx.Container()
 	definitions := container.Definitions().List(filter.ByType(c.missingType))
-
-	if len(definitions) == 0 {
-		return true
-	}
-
-	return false
+	singletons := container.Singletons().List(filter.ByType(c.missingType))
+	return len(definitions) == 0 && len(singletons) == 0
 }

@@ -71,7 +71,7 @@ func TestConditionContext_ValueShouldReturnAssociatedValueWithKey(t *testing.T) 
 	assert.Equal(t, "anyValue", conditionContext.Value("anyKey"))
 }
 
-func TestConditionContext_ContainerShouldReturnAnyContainerInstance(t *testing.T) {
+func TestConditionContext_ContainerShouldReturnAnyContainerObject(t *testing.T) {
 	container := NewObjectContainer()
 
 	conditionContext := NewConditionContext(context.Background(), container)

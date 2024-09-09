@@ -19,7 +19,6 @@ func OnProfile(profiles ...string) *OnProfileCondition {
 func (c *OnProfileCondition) MatchesCondition(ctx component.ConditionContext) bool {
 	result, err := ctx.Container().GetObject(ctx, filter.ByTypeOf[runtime.Environment]())
 	if err != nil {
-		//
 		return false
 	}
 

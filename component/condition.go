@@ -14,7 +14,7 @@ type ConditionContext struct {
 	container Container
 }
 
-func newConditionContext(ctx context.Context, container Container) ConditionContext {
+func NewConditionContext(ctx context.Context, container Container) ConditionContext {
 	return ConditionContext{
 		ctx:       ctx,
 		container: container,
@@ -26,15 +26,15 @@ func (c ConditionContext) Deadline() (deadline time.Time, ok bool) {
 }
 
 func (c ConditionContext) Done() <-chan struct{} {
-	return c.Done()
+	return c.ctx.Done()
 }
 
 func (c ConditionContext) Err() error {
-	return c.Err()
+	return c.ctx.Err()
 }
 
 func (c ConditionContext) Value(key any) any {
-	return c.Value(key)
+	return c.ctx.Value(key)
 }
 
 func (c ConditionContext) Container() Container {
@@ -60,7 +60,7 @@ func (e ConditionEvaluator) Evaluate(ctx context.Context, conditions []Condition
 		return true
 	}
 
-	conditionContext := newConditionContext(ctx, e.container)
+	conditionContext := NewConditionContext(ctx, e.container)
 
 	for _, condition := range conditions {
 		if !condition.MatchesCondition(conditionContext) {

@@ -42,5 +42,9 @@ func (c *OnPropertyCondition) MatchesCondition(ctx component.ConditionContext) b
 		return c.matchIfMissing
 	}
 
+	if c.value == nil {
+		return true
+	}
+
 	return value == c.value
 }

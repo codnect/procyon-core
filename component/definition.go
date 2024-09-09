@@ -153,7 +153,7 @@ func (r *ObjectDefinitionRegistry) Register(definition *Definition) error {
 	r.muDefinitions.Lock()
 
 	if _, exists := r.definitionMap[definition.Name()]; exists {
-		return fmt.Errorf("definition with name %s already exists", definition.Name())
+		return fmt.Errorf("definition with name '%s' already exists", definition.Name())
 	}
 
 	r.definitionMap[definition.Name()] = definition

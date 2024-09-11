@@ -30,7 +30,7 @@ func TestDefinitionLoader_LoadDefinitionsShouldLoadDefinitionsIfComponentConditi
 	assert.NotNil(t, definition)
 
 	assert.Equal(t, "anyObjectName", definition.Name())
-	assert.Equal(t, reflector.TypeOf[AnyType]().ReflectType(), definition.Type().ReflectType())
+	assert.Equal(t, reflector.TypeOf[*AnyType]().ReflectType(), definition.Type().ReflectType())
 	assert.Equal(t, SingletonScope, definition.Scope())
 	assert.True(t, definition.IsSingleton())
 	assert.False(t, definition.IsPrototype())

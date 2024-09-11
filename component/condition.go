@@ -15,6 +15,14 @@ type ConditionContext struct {
 }
 
 func NewConditionContext(ctx context.Context, container Container) ConditionContext {
+	if ctx == nil {
+		panic("nil context")
+	}
+
+	if container == nil {
+		panic("nil container")
+	}
+
 	return ConditionContext{
 		ctx:       ctx,
 		container: container,
@@ -47,7 +55,7 @@ type ConditionEvaluator struct {
 
 func NewConditionEvaluator(container Container) ConditionEvaluator {
 	if container == nil {
-		panic("container cannot be nil")
+		panic("nil container")
 	}
 
 	return ConditionEvaluator{

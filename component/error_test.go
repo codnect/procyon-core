@@ -6,13 +6,6 @@ import (
 	"testing"
 )
 
-type AnyType struct {
-}
-
-func anyConstructorFunction() AnyType {
-	return AnyType{}
-}
-
 func TestObjectNotFoundError_ErrorShouldReturnErrorMessageIfNameIsProvided(t *testing.T) {
 	err := ObjectNotFoundError{
 		name: "anyObjectName",

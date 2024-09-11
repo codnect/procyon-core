@@ -26,6 +26,19 @@ func TestNewConditionContextShouldCreateContextProperly(t *testing.T) {
 	assert.Equal(t, ctx, conditionContext.ctx)
 }
 
+func TestNewConditionContextShouldPanicIfContextIsNotProvided(t *testing.T) {
+	container := NewObjectContainer()
+	assert.PanicsWithValue(t, "nil context", func() {
+		NewConditionContext(nil, container)
+	})
+}
+
+func TestNewConditionContextShouldPanicIfContainerIsNotProvided(t *testing.T) {
+	assert.PanicsWithValue(t, "nil container", func() {
+		NewConditionContext(context.Background(), nil)
+	})
+}
+
 func TestConditionContext_DeadlineShouldReturnWhenContextIsTimeout(t *testing.T) {
 	container := NewObjectContainer()
 	now := time.Now()
@@ -40,11 +53,11 @@ func TestConditionContext_DeadlineShouldReturnWhenContextIsTimeout(t *testing.T)
 func TestConditionContext_DoneShouldWaitForContextToBeCompleted(t *testing.T) {
 	container := NewObjectContainer()
 	now := time.Now()
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*1)
 
 	conditionContext := NewConditionContext(ctx, container)
 	<-conditionContext.Done()
-	assert.Equal(t, time.Now().Sub(now).Round(time.Second*3), time.Second*3)
+	assert.Equal(t, time.Now().Sub(now).Round(time.Second*1), time.Second*1)
 }
 
 func TestConditionContext_ErrShouldNotReturnErrorIfContextIsNotCancelled(t *testing.T) {

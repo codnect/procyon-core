@@ -146,7 +146,7 @@ func NewObjectDefinitionRegistry() *ObjectDefinitionRegistry {
 
 func (r *ObjectDefinitionRegistry) Register(definition *Definition) error {
 	if definition == nil {
-		return fmt.Errorf("definition should not be nil")
+		return fmt.Errorf("nil definition")
 	}
 
 	defer r.muDefinitions.Unlock()
@@ -166,7 +166,7 @@ func (r *ObjectDefinitionRegistry) Remove(name string) error {
 	r.muDefinitions.Lock()
 
 	if _, exists := r.definitionMap[name]; !exists {
-		return fmt.Errorf("no found definition with name %s", name)
+		return fmt.Errorf("no found definition with name '%s'", name)
 	}
 
 	delete(r.definitionMap, name)
@@ -185,7 +185,7 @@ func (r *ObjectDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, 
 	definitionList := r.List(filters...)
 
 	if len(definitionList) > 1 {
-		return nil, errors.New("definitions cannot be distinguished because too many matching found")
+		return nil, errors.New("cannot distinguish definitions because too many matching found")
 	}
 
 	if len(definitionList) == 0 {
@@ -227,28 +227,15 @@ func (r *ObjectDefinitionRegistry) List(filters ...filter.Filter) []*Definition 
 			continue
 		}
 
-		if definition.Type().CanConvert(filterOpts.Type) {
-			if reflector.IsStruct(definition.Type()) && reflector.IsStruct(filterOpts.Type) {
-				if matchTypeName(definition.Type(), filterOpts.Type) {
-					definitionList = append(definitionList, definition)
-				}
-			} else {
+		if canConvert(definition.Type(), filterOpts.Type) {
+			definitionList = append(definitionList, definition)
+		} else if reflector.IsPointer(definition.Type()) {
+			ptrType := reflector.ToPointer(definition.Type())
+
+			if canConvert(ptrType.Elem(), filterOpts.Type) {
 				definitionList = append(definitionList, definition)
 			}
-		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
-			pointerType := reflector.ToPointer(definition.Type())
-
-			if pointerType.Elem().CanConvert(filterOpts.Type) {
-				if reflector.IsStruct(pointerType) && reflector.IsStruct(filterOpts.Type) {
-					if matchTypeName(pointerType, filterOpts.Type) {
-						definitionList = append(definitionList, definition)
-					}
-				} else {
-					definitionList = append(definitionList, definition)
-				}
-			}
 		}
-
 	}
 
 	return definitionList

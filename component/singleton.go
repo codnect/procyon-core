@@ -40,7 +40,7 @@ func (r *SingletonObjectRegistry) Register(name string, object any) error {
 	r.muSingletonObjects.Lock()
 
 	if _, exists := r.singletonObjects[name]; exists {
-		return fmt.Errorf("object with name %s already exists", name)
+		return fmt.Errorf("object with name '%s' already exists", name)
 	}
 
 	r.singletonObjects[name] = object
@@ -53,7 +53,7 @@ func (r *SingletonObjectRegistry) Remove(name string) error {
 	r.muSingletonObjects.Lock()
 
 	if _, exists := r.singletonObjects[name]; !exists {
-		return fmt.Errorf("no found object with name %s", name)
+		return fmt.Errorf("no found object with name '%s'", name)
 	}
 
 	delete(r.singletonObjects, name)
@@ -65,7 +65,7 @@ func (r *SingletonObjectRegistry) Find(filters ...filter.Filter) (any, error) {
 	objectList := r.List(filters...)
 
 	if len(objectList) > 1 {
-		return nil, fmt.Errorf("objects cannot be distinguished because too many matching found")
+		return nil, fmt.Errorf("cannot distinguish objects because too many matching found")
 	}
 
 	if len(objectList) == 0 {
@@ -108,27 +108,13 @@ func (r *SingletonObjectRegistry) List(filters ...filter.Filter) []any {
 			continue
 		}
 
-		if objectType.CanConvert(filterOpts.Type) {
-			if reflector.IsStruct(objectType) && reflector.IsStruct(filterOpts.Type) {
-				if matchTypeName(objectType, filterOpts.Type) {
-					objectList = append(objectList, r.singletonObjects[objectName])
-				}
-			} else {
-				objectList = append(objectList, r.singletonObjects[objectName])
-			}
-		} else if reflector.IsPointer(objectType) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
+		if canConvert(objectType, filterOpts.Type) {
+			objectList = append(objectList, r.singletonObjects[objectName])
+		} else if reflector.IsPointer(objectType) {
 			ptrType := reflector.ToPointer(objectType)
 
-			if ptrType.Elem().CanConvert(filterOpts.Type) {
-				if reflector.IsStruct(ptrType) && reflector.IsStruct(filterOpts.Type) && !matchTypeName(ptrType, filterOpts.Type) {
-					continue
-				}
-
-				val, err := ptrType.Elem().Value()
-
-				if err == nil {
-					objectList = append(objectList, val)
-				}
+			if canConvert(ptrType.Elem(), filterOpts.Type) {
+				objectList = append(objectList, r.singletonObjects[objectName])
 			}
 		}
 
@@ -196,7 +182,7 @@ func (r *SingletonObjectRegistry) putObjectToPreparation(name string) error {
 	r.muSingletonObjects.Lock()
 
 	if _, ok := r.singletonObjectsInPreparation[name]; ok {
-		return fmt.Errorf("object with name %s is currently in preparation, maybe it has got circular dependency cycle", name)
+		return fmt.Errorf("object with name '%s' is currently in preparation, maybe it has got circular dependency cycle", name)
 	}
 
 	r.singletonObjectsInPreparation[name] = struct{}{}

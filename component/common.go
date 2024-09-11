@@ -5,8 +5,14 @@ import (
 	"fmt"
 )
 
-func matchTypeName(sourceType reflector.Type, targetType reflector.Type) bool {
-	return fullTypeName(sourceType) == fullTypeName(targetType)
+func canConvert(sourceType reflector.Type, targetType reflector.Type) bool {
+	if sourceType.ReflectType() == targetType.ReflectType() {
+		return true
+	} else if reflector.IsInterface(targetType) && sourceType.CanConvert(targetType) {
+		return true
+	}
+
+	return false
 }
 
 func rawName(typ reflector.Type) string {

@@ -41,7 +41,7 @@ func Qualifier[T any](name string) Option {
 		}
 
 		if !exists {
-			return fmt.Errorf("could not find any input of type %s", typ.Name())
+			return fmt.Errorf("cannot find any input of type %s", typ.Name())
 		}
 
 		return nil
@@ -55,7 +55,7 @@ func QualifierAt(index int, name string) Option {
 		}
 
 		if len(definition.constructorArgs) <= index {
-			return fmt.Errorf("could not find any input at index %d", index)
+			return fmt.Errorf("cannot find any input at index %d", index)
 		}
 
 		definition.constructorArgs[index].name = name
@@ -76,7 +76,7 @@ func Optional[T any]() Option {
 		}
 
 		if !exists {
-			return fmt.Errorf("could not find any input of type %s", typ.Name())
+			return fmt.Errorf("cannot find any input of type %s", typ.Name())
 		}
 
 		return nil
@@ -90,7 +90,7 @@ func OptionalAt(index int) Option {
 		}
 
 		if len(definition.constructorArgs) <= index {
-			return fmt.Errorf("could not find any input at index %d", index)
+			return fmt.Errorf("cannot find any input at index %d", index)
 		}
 
 		definition.constructorArgs[index].optional = true

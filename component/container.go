@@ -160,11 +160,11 @@ func (c *ObjectContainer) Singletons() SingletonRegistry {
 
 func (c *ObjectContainer) RegisterScope(name string, scope Scope) error {
 	if strings.TrimSpace(name) == "" {
-		panic("name cannot be empty or blank")
+		panic("cannot register scope with empty or blank name")
 	}
 
 	if scope == nil {
-		panic("scope cannot be nil")
+		panic("nil scope")
 	}
 
 	if SingletonScope != name && PrototypeScope != name {
@@ -174,7 +174,7 @@ func (c *ObjectContainer) RegisterScope(name string, scope Scope) error {
 		return nil
 	}
 
-	return errors.New("singleton' and 'prototype' cannot be replaced")
+	return errors.New("cannot replace 'singleton' and 'prototype' scopes")
 
 }
 
@@ -197,30 +197,12 @@ func (c *ObjectContainer) FindScope(name string) (Scope, error) {
 		return scope, nil
 	}
 
-	return nil, fmt.Errorf("no scope registered for scope name %s", name)
-}
-
-func (c *ObjectContainer) matchType(objectType reflector.Type, requiredType reflector.Type) bool {
-	if objectType.CanConvert(requiredType) {
-		if reflector.IsStruct(objectType) && reflector.IsStruct(requiredType) {
-			return matchTypeName(objectType, requiredType)
-		}
-
-		return true
-	} else if reflector.IsPointer(objectType) && !reflector.IsPointer(requiredType) && !reflector.IsInterface(requiredType) {
-		ptrType := reflector.ToPointer(objectType)
-
-		if ptrType.Elem().CanConvert(requiredType) {
-			return true
-		}
-	}
-
-	return false
+	return nil, fmt.Errorf("no scope registered for scope name '%s'", name)
 }
 
 func (c *ObjectContainer) AddObjectProcessor(processor ObjectProcessor) error {
 	if processor == nil {
-		return errors.New("processor cannot be nil")
+		return errors.New("nil processor")
 	}
 
 	defer c.postProcessorMu.Unlock()
@@ -246,11 +228,11 @@ func (c *ObjectContainer) ObjectProcessorCount() int {
 
 func (c *ObjectContainer) createObject(ctx context.Context, definition *Definition, args []any) (object any, err error) {
 	if ctx == nil {
-		return nil, errors.New("ctx cannot be nil")
+		return nil, errors.New("nil context")
 	}
 
 	if definition == nil {
-		return nil, errors.New("definition cannot be nil")
+		return nil, errors.New("nil definition")
 	}
 
 	constructorFunc := definition.Constructor()
@@ -293,7 +275,7 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 
 		object = results[0]
 	} else {
-		return nil, fmt.Errorf("the number of provided arguments is wrong for definition %s", definition.Name())
+		return nil, fmt.Errorf("the number of provided arguments is wrong for definition '%s'", definition.Name())
 	}
 
 	return c.initialize(ctx, object)

@@ -98,21 +98,13 @@ func List(filters ...filter.Filter) []*Component {
 			continue
 		}
 
-		if definition.Type().CanConvert(filterOpts.Type) {
-			if reflector.IsStruct(definition.Type()) && reflector.IsStruct(filterOpts.Type) && matchTypeName(definition.Type(), filterOpts.Type) {
-				componentList = append(componentList, component)
-			} else {
-				componentList = append(componentList, component)
-			}
-		} else if reflector.IsPointer(definition.Type()) && !reflector.IsPointer(filterOpts.Type) && !reflector.IsInterface(filterOpts.Type) {
-			pointerType := reflector.ToPointer(definition.Type())
+		if canConvert(definition.Type(), filterOpts.Type) {
+			componentList = append(componentList, component)
+		} else if reflector.IsPointer(definition.Type()) {
+			ptrType := reflector.ToPointer(definition.Type())
 
-			if pointerType.Elem().CanConvert(filterOpts.Type) {
-				if reflector.IsStruct(pointerType) && reflector.IsStruct(filterOpts.Type) && matchTypeName(pointerType, filterOpts.Type) {
-					componentList = append(componentList, component)
-				} else {
-					componentList = append(componentList, component)
-				}
+			if canConvert(ptrType.Elem(), filterOpts.Type) {
+				componentList = append(componentList, component)
 			}
 		}
 	}

@@ -1,12 +1,14 @@
 package filter
 
-import "codnect.io/reflector"
+import (
+	"reflect"
+)
 
 type Filter func(filters *Filters)
 
 type Filters struct {
 	Name string
-	Type reflector.Type
+	Type reflect.Type
 }
 
 func Of(filters ...Filter) *Filters {
@@ -27,12 +29,12 @@ func ByName(name string) Filter {
 
 func ByTypeOf[T any]() Filter {
 	return func(filters *Filters) {
-		typ := reflector.TypeOf[T]()
+		typ := reflect.TypeFor[T]()
 		filters.Type = typ
 	}
 }
 
-func ByType(typ reflector.Type) Filter {
+func ByType(typ reflect.Type) Filter {
 	return func(filters *Filters) {
 		filters.Type = typ
 	}

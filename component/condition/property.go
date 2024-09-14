@@ -29,7 +29,12 @@ func (c *OnPropertyCondition) MatchIfMissing(matchIfMissing bool) *OnPropertyCon
 }
 
 func (c *OnPropertyCondition) MatchesCondition(ctx component.ConditionContext) bool {
-	result, err := ctx.Container().GetObject(ctx, filter.ByTypeOf[runtime.Environment]())
+	container := ctx.Container()
+	if container == nil {
+		return false
+	}
+
+	result, err := container.GetObject(ctx, filter.ByTypeOf[runtime.Environment]())
 	if err != nil {
 		return false
 	}

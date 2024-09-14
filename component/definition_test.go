@@ -2,10 +2,79 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"reflect"
 	"testing"
 )
+
+type MockDefinitionRegistry struct {
+	mock.Mock
+}
+
+func (r *MockDefinitionRegistry) Register(definition *Definition) error {
+	got := r.Called(definition)
+
+	if len(got) == 0 || got[0] == nil {
+		return nil
+	}
+
+	return got[0].(error)
+}
+
+func (r *MockDefinitionRegistry) Remove(name string) error {
+	got := r.Called(name)
+
+	if len(got) == 0 || got[0] == nil {
+		return nil
+	}
+
+	return got[0].(error)
+}
+
+func (r *MockDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, error) {
+	got := r.Called(filters)
+
+	if len(got) == 0 {
+		return nil, nil
+	}
+
+	if got[1] == nil {
+		return got[0].(*Definition), nil
+	}
+
+	return got[0].(*Definition), got[1].(error)
+}
+
+func (r *MockDefinitionRegistry) FindFirst(filters ...filter.Filter) (*Definition, bool) {
+	got := r.Called(filters)
+
+	if len(got) == 0 {
+		return nil, false
+	}
+
+	return got[0].(*Definition), got[1].(bool)
+}
+
+func (r *MockDefinitionRegistry) List(filters ...filter.Filter) []*Definition {
+	got := r.Called(filters)
+	return got[0].([]*Definition)
+}
+
+func (r *MockDefinitionRegistry) Contains(name string) bool {
+	got := r.Called(name)
+	return got[0].(bool)
+}
+
+func (r *MockDefinitionRegistry) Names() []string {
+	got := r.Called()
+	return got[0].([]string)
+}
+
+func (r *MockDefinitionRegistry) Count() int {
+	got := r.Called()
+	return got[0].(int)
+}
 
 func TestObjectDefinitionRegistry_RegisterShouldRegisterDefinitionSuccessfully(t *testing.T) {
 	registry := NewObjectDefinitionRegistry()
@@ -57,9 +126,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 	anotherDefinition, _ := MakeDefinition(anotherConstructorFunction, Named("anotherObjectName"))
 
 	anyObject := &AnyType{}
-	//anotherObject := &AnotherType{}
-	anyObjectType := reflector.TypeOfAny(anyObject)
-	//anotherObjectType := reflector.TypeOfAny(anotherObject)
+	anyObjectType := reflect.TypeOf(anyObject)
 
 	testCases := []struct {
 		name    string
@@ -69,7 +136,18 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "ShouldReturnDefinitionWithoutFiltersIfThereIsOnlyOneDefinition",
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereIsNoAnyDefinition",
+			fields: fields{
+				definitions: map[string]*Definition{},
+			},
+			args: args{
+				filter: []filter.Filter{},
+			},
+			want:    nil,
+			wantErr: "at least one filter must be used",
+		},
+		{
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereIsOnlyOneDefinition",
 			fields: fields{
 				definitions: map[string]*Definition{
 					"anyObjectName": anyDefinition,
@@ -78,10 +156,11 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 			args: args{
 				filter: []filter.Filter{},
 			},
-			want: anyDefinition,
+			want:    nil,
+			wantErr: "at least one filter must be used",
 		},
 		{
-			name: "ShouldReturnErrorWithoutFiltersIfThereAreManyDefinitions",
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereAreManyDefinitions",
 			fields: fields{
 				definitions: map[string]*Definition{
 					"anyObjectName":     anyDefinition,
@@ -92,7 +171,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 				filter: []filter.Filter{},
 			},
 			want:    nil,
-			wantErr: "cannot distinguish definitions because too many matching found",
+			wantErr: "at least one filter must be used",
 		},
 		{
 			name: "ShouldReturnDefinitionWithByNameFilterIfDefinitionWithNameExists",
@@ -144,7 +223,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found definition with type '*AnyType'",
+			wantErr: "not found definition with type '*component.AnyType'",
 		},
 		{
 			name: "ShouldReturnDefinitionWithByTypeOfFilterIfThereIsOnlyOneObjectImplementingInterface",
@@ -201,7 +280,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found definition with type '*AnyType'",
+			wantErr: "not found definition with type '*component.AnyType'",
 		},
 		{
 			name: "ShouldReturnDefinitionWithAllFiltersIfDefinitionExists",
@@ -231,7 +310,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found definition with name 'anyObjectName' and type '*AnyType'",
+			wantErr: "not found definition with name 'anyObjectName' and type '*component.AnyType'",
 		},
 	}
 	for _, testCase := range testCases {
@@ -240,7 +319,7 @@ func TestObjectDefinitionRegistry_Find(t *testing.T) {
 			registry.definitionMap = testCase.fields.definitions
 
 			got, err := registry.Find(testCase.args.filter...)
-			if testCase.wantErr != "" {
+			if err != nil || testCase.wantErr != "" {
 				if err != nil {
 					assert.Equal(t, testCase.wantErr, err.Error(), "failed for test case '%s'", testCase.name)
 				} else {
@@ -267,9 +346,7 @@ func TestObjectDefinitionRegistry_FindFirst(t *testing.T) {
 	anotherDefinition, _ := MakeDefinition(anotherConstructorFunction, Named("anotherObjectName"))
 
 	anyObject := &AnyType{}
-	//anotherObject := &AnotherType{}
-	anyObjectType := reflector.TypeOfAny(anyObject)
-	//anotherObjectType := reflector.TypeOfAny(anotherObject)
+	anyObjectType := reflect.TypeOf(anyObject)
 
 	testCases := []struct {
 		name     string

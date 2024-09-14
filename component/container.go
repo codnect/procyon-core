@@ -2,10 +2,10 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -52,11 +52,17 @@ func NewObjectContainer() *ObjectContainer {
 }
 
 func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filter) (any, error) {
+	if len(filters) == 0 {
+		return nil, errors.New("at least one filter must be used")
+	}
+
 	ctx = contextWithHolder(ctx)
 
 	candidate, err := c.Singletons().Find(filters...)
 	if err == nil {
 		return candidate, nil
+	} else if _, ok := err.(*ObjectNotFoundError); !ok {
+		return nil, err
 	}
 
 	var definition *Definition
@@ -73,7 +79,7 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 		object, err = c.Singletons().OrElseCreate(objectName, func(ctx context.Context) (any, error) {
 
 			if log.IsDebugEnabled() {
-				log.D(ctx, "Creating singleton object of type '{}.{}'", definition.Type().PackageName(), rawName(definition.Type()))
+				log.D(ctx, "Creating singleton object of type '{}'", definition.Type().String())
 			}
 
 			return c.createObject(ctx, definition, nil)
@@ -208,8 +214,8 @@ func (c *ObjectContainer) AddObjectProcessor(processor ObjectProcessor) error {
 	defer c.postProcessorMu.Unlock()
 	c.postProcessorMu.Lock()
 
-	typ := reflector.TypeOfAny(processor)
-	typeName := fullTypeName(typ)
+	typ := reflect.TypeOf(processor)
+	typeName := fmt.Sprintf("%s.%s", typ.PkgPath(), typ.Name())
 
 	if _, ok := c.typesOfProcessor[typeName]; ok {
 		return fmt.Errorf("processor '%s' is already registered", typeName)
@@ -235,42 +241,44 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 		return nil, errors.New("nil definition")
 	}
 
-	constructorFunc := definition.Constructor()
-	argsCount := len(definition.ConstructorArguments())
+	constructor := definition.Constructor()
+	argsCount := len(constructor.Arguments())
 
 	if argsCount != 0 && len(args) == 0 {
 		var resolvedArguments []any
-		resolvedArguments, err = c.resolveArguments(ctx, definition.ConstructorArguments())
+		resolvedArguments, err = c.resolveArguments(ctx, constructor.Arguments())
 
 		if err != nil {
 			return nil, err
 		}
 
 		var results []any
-		results, err = constructorFunc.Invoke(resolvedArguments...)
+		results, err = constructor.Invoke(resolvedArguments...)
 
 		if err != nil {
 			return nil, err
 		}
 
-		resultType := reflector.TypeOfAny(results[0])
-		if (reflector.IsPointer(resultType) || reflector.IsInterface(resultType)) && resultType.ReflectValue().IsZero() {
-			return nil, fmt.Errorf("constructor function '%s' returns nil", constructorFunc.Name())
+		resultType := reflect.TypeOf(results[0])
+		resultValue := reflect.ValueOf(results[0])
+		if (resultType.Kind() == reflect.Pointer || resultType.Kind() == reflect.Interface) && resultValue.IsZero() {
+			return nil, fmt.Errorf("constructor function '%s' returns nil", constructor.Name())
 		}
 
 		object = results[0]
 	} else if (argsCount == 0 && len(args) == 0) || (len(args) != 0 && argsCount == len(args)) {
 		var results []any
-		results, err = constructorFunc.Invoke(args...)
+		results, err = constructor.Invoke(args...)
 
 		if err != nil {
 			return nil, err
 		}
 
-		resultType := reflector.TypeOfAny(results[0])
+		resultType := reflect.TypeOf(results[0])
+		resultValue := reflect.ValueOf(results[0])
 
-		if (reflector.IsPointer(resultType) || reflector.IsInterface(resultType)) && resultType.ReflectValue().IsZero() {
-			return nil, fmt.Errorf("constructor function '%s' returns nil", constructorFunc.Name())
+		if (resultType.Kind() == reflect.Pointer || resultType.Kind() == reflect.Interface) && resultValue.IsZero() {
+			return nil, fmt.Errorf("constructor function '%s' returns nil", constructor.Name())
 		}
 
 		object = results[0]
@@ -281,26 +289,21 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 	return c.initialize(ctx, object)
 }
 
-func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*ConstructorArgument) ([]any, error) {
+func (c *ObjectContainer) resolveArguments(ctx context.Context, args []ConstructorArgument) ([]any, error) {
 	arguments := make([]any, 0)
 
 	for _, arg := range args {
 
-		if reflector.IsSlice(arg.Type()) {
-			sliceType := reflector.ToSlice(arg.Type())
-			val, err := sliceType.Instantiate()
+		if arg.Type().Kind() == reflect.Slice {
+			sliceType := arg.Type()
+			sliceVal := reflect.MakeSlice(sliceType, 0, 0)
 
-			if err != nil {
-				return nil, err
+			objectList := c.ListObjects(ctx, filter.ByType(sliceType.Elem()))
+			for _, object := range objectList {
+				sliceVal = reflect.Append(sliceVal, reflect.ValueOf(object))
 			}
 
-			sliceType = reflector.ToSlice(reflector.ToPointer(reflector.TypeOfAny(val.Val())).Elem())
-
-			var result any
-			objectList := c.ListObjects(ctx, filter.ByType(sliceType.Elem()))
-			result, err = sliceType.Append(objectList...)
-
-			arguments = append(arguments, result)
+			arguments = append(arguments, sliceVal.Interface())
 			continue
 		}
 
@@ -324,13 +327,11 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []*Construc
 		}
 
 		if err != nil {
-			if notFoundErr := (*ObjectNotFoundError)(nil); errors.As(err, &notFoundErr) && !reflector.IsPointer(arg.Type()) && arg.Type().IsInstantiable() {
-				var val reflector.Value
-				val, err = arg.Type().Instantiate()
+			argKind := arg.Type().Kind()
 
-				if err != nil {
-					return nil, err
-				}
+			if _, ok := err.(*ObjectNotFoundError); ok && argKind != reflect.Pointer && argKind != reflect.Interface {
+				var val reflect.Value
+				val = reflect.New(arg.Type())
 
 				object = val.Elem()
 				arguments = append(arguments, object)
@@ -381,7 +382,7 @@ func (c *ObjectContainer) applyProcessorsBeforeInit(ctx context.Context, object 
 		}
 
 		if result == nil {
-			return nil, fmt.Errorf("'%s' returns nil object from ProcessBeforeInit", reflector.TypeOfAny(processor).Name())
+			return nil, fmt.Errorf("'%s' returns nil object from ProcessBeforeInit", reflect.TypeOf(processor).Name())
 		}
 
 		object = result
@@ -399,7 +400,7 @@ func (c *ObjectContainer) applyProcessorsAfterInit(ctx context.Context, object a
 		}
 
 		if result == nil {
-			return nil, fmt.Errorf("'%s' returns nil object from ProcessAfterInit", reflector.TypeOfAny(processor).Name())
+			return nil, fmt.Errorf("'%s' returns nil object from ProcessAfterInit", reflect.TypeOf(processor).Name())
 		}
 
 		object = result

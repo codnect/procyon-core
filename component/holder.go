@@ -54,6 +54,10 @@ func holderFromContext(ctx context.Context) *holder {
 }
 
 func contextWithHolder(parent context.Context) context.Context {
+	if parent == nil {
+		return context.Background()
+	}
+
 	h := parent.Value(ctxHolderKey)
 
 	if h != nil {

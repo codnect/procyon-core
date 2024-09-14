@@ -2,9 +2,10 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 )
 
@@ -23,7 +24,7 @@ type SingletonRegistry interface {
 type SingletonObjectRegistry struct {
 	singletonObjects              map[string]any
 	singletonObjectsInPreparation map[string]struct{}
-	typesOfSingletonObjects       map[string]reflector.Type
+	typesOfSingletonObjects       map[string]reflect.Type
 	muSingletonObjects            sync.RWMutex
 }
 
@@ -31,7 +32,7 @@ func NewSingletonObjectRegistry() *SingletonObjectRegistry {
 	return &SingletonObjectRegistry{
 		singletonObjects:              make(map[string]any),
 		singletonObjectsInPreparation: make(map[string]struct{}),
-		typesOfSingletonObjects:       make(map[string]reflector.Type),
+		typesOfSingletonObjects:       make(map[string]reflect.Type),
 	}
 }
 
@@ -44,7 +45,7 @@ func (r *SingletonObjectRegistry) Register(name string, object any) error {
 	}
 
 	r.singletonObjects[name] = object
-	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(object)
+	r.typesOfSingletonObjects[name] = reflect.TypeOf(object)
 	return nil
 }
 
@@ -62,6 +63,10 @@ func (r *SingletonObjectRegistry) Remove(name string) error {
 }
 
 func (r *SingletonObjectRegistry) Find(filters ...filter.Filter) (any, error) {
+	if len(filters) == 0 {
+		return nil, errors.New("at least one filter must be used")
+	}
+
 	objectList := r.List(filters...)
 
 	if len(objectList) > 1 {
@@ -108,16 +113,9 @@ func (r *SingletonObjectRegistry) List(filters ...filter.Filter) []any {
 			continue
 		}
 
-		if canConvert(objectType, filterOpts.Type) {
+		if matchTypes(objectType, filterOpts.Type) {
 			objectList = append(objectList, r.singletonObjects[objectName])
-		} else if reflector.IsPointer(objectType) {
-			ptrType := reflector.ToPointer(objectType)
-
-			if canConvert(ptrType.Elem(), filterOpts.Type) {
-				objectList = append(objectList, r.singletonObjects[objectName])
-			}
 		}
-
 	}
 
 	return objectList
@@ -145,7 +143,7 @@ func (r *SingletonObjectRegistry) OrElseCreate(name string, provider ObjectProvi
 	}
 
 	r.singletonObjects[name] = object
-	r.typesOfSingletonObjects[name] = reflector.TypeOfAny(object)
+	r.typesOfSingletonObjects[name] = reflect.TypeOf(object)
 
 	return object, nil
 }

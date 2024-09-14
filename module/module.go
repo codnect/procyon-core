@@ -1,8 +1,8 @@
 package module
 
 import (
-	"codnect.io/reflector"
 	"fmt"
+	"reflect"
 )
 
 type Module interface {
@@ -10,19 +10,14 @@ type Module interface {
 }
 
 func Use[M Module]() {
-	typ := reflector.TypeOf[M]()
-	if reflector.IsStruct(typ) {
-		moduleStruct := reflector.ToStruct(typ)
-		instance, err := moduleStruct.Instantiate()
+	moduleType := reflect.TypeFor[M]()
+	if moduleType.Kind() == reflect.Struct {
+		moduleValue := reflect.New(moduleType)
 
+		m := moduleValue.Interface().(Module)
+		err := m.InitModule()
 		if err != nil {
-			panic(err)
-		}
-
-		m := instance.Elem().(Module)
-		err = m.InitModule()
-		if err != nil {
-			panic(fmt.Errorf("failed to initialize the module '%s': %e", moduleStruct.Name(), err))
+			panic(fmt.Errorf("failed to initialize the module '%s': %e", moduleType.Name(), err))
 		}
 	}
 }

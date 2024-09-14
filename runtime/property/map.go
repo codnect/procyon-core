@@ -12,11 +12,11 @@ type MapSource struct {
 
 func NewMapSource(name string, source map[string]interface{}) *MapSource {
 	if strings.TrimSpace(name) == "" {
-		panic("name cannot be empty or blank")
+		panic("cannot create map source with empty or blank name")
 	}
 
 	if source == nil {
-		panic("source cannot be nil")
+		panic("nil source")
 	}
 
 	return &MapSource{

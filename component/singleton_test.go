@@ -2,12 +2,95 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"context"
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"reflect"
 	"testing"
 )
+
+type MockSingletonRegistry struct {
+	mock.Mock
+}
+
+func (r *MockSingletonRegistry) Register(name string, object any) error {
+	got := r.Called(name, object)
+
+	if len(got) == 0 || got[0] == nil {
+		return nil
+	}
+
+	return got[0].(error)
+}
+
+func (r *MockSingletonRegistry) Remove(name string) error {
+	got := r.Called(name)
+
+	if len(got) == 0 || got[0] == nil {
+		return nil
+	}
+
+	return got[0].(error)
+}
+
+func (r *MockSingletonRegistry) Find(filters ...filter.Filter) (any, error) {
+	got := r.Called(filters)
+
+	if len(got) == 0 {
+		return nil, nil
+	}
+
+	if got[1] == nil {
+		return got[0], nil
+	}
+
+	return got[0], got[1].(error)
+}
+
+func (r *MockSingletonRegistry) FindFirst(filters ...filter.Filter) (any, bool) {
+	got := r.Called(filters)
+
+	if len(got) == 0 {
+		return nil, false
+	}
+
+	return got[0].(any), got[1].(bool)
+}
+
+func (r *MockSingletonRegistry) List(filters ...filter.Filter) []any {
+	got := r.Called(filters)
+	return got[0].([]any)
+}
+
+func (r *MockSingletonRegistry) OrElseCreate(name string, provider ObjectProvider) (any, error) {
+	got := r.Called(name, provider)
+
+	if len(got) == 0 {
+		return nil, nil
+	}
+
+	if got[1] == nil {
+		return got[0], nil
+	}
+
+	return got[0], got[1].(error)
+}
+
+func (r *MockSingletonRegistry) Contains(name string) bool {
+	got := r.Called(name)
+	return got[0].(bool)
+}
+
+func (r *MockSingletonRegistry) Names() []string {
+	got := r.Called()
+	return got[0].([]string)
+}
+
+func (r *MockSingletonRegistry) Count() int {
+	got := r.Called()
+	return got[0].(int)
+}
 
 func TestSingletonObjectRegistry_RegisterShouldRegisterObjectSuccessfully(t *testing.T) {
 	registry := NewSingletonObjectRegistry()
@@ -15,8 +98,8 @@ func TestSingletonObjectRegistry_RegisterShouldRegisterObjectSuccessfully(t *tes
 	assert.Nil(t, err)
 	assert.Contains(t, registry.singletonObjects, "anyObjectName")
 	assert.Contains(t, registry.typesOfSingletonObjects, "anyObjectName")
-	assert.Equal(t, reflector.TypeOf[*AnyType]().ReflectType(),
-		registry.typesOfSingletonObjects["anyObjectName"].ReflectType())
+	assert.Equal(t, reflect.TypeFor[*AnyType](),
+		registry.typesOfSingletonObjects["anyObjectName"])
 }
 
 func TestSingletonObjectRegistry_RegisterShouldReturnErrorIfComponentWithSameNameIsAlreadyRegistered(t *testing.T) {
@@ -48,13 +131,13 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 
 	type fields struct {
 		singletonObjects        map[string]any
-		typesOfSingletonObjects map[string]reflector.Type
+		typesOfSingletonObjects map[string]reflect.Type
 	}
 
 	anyObject := &AnyType{}
 	anotherObject := &AnotherType{}
-	anyObjectType := reflector.TypeOfAny(anyObject)
-	anotherObjectType := reflector.TypeOfAny(anotherObject)
+	anyObjectType := reflect.TypeOf(anyObject)
+	anotherObjectType := reflect.TypeOf(anotherObject)
 
 	testCases := []struct {
 		name    string
@@ -64,28 +147,41 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name: "ShouldReturnObjectWithoutFiltersIfThereIsOnlyOneObject",
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereIsNoAnyObject",
+			fields: fields{
+				singletonObjects:        map[string]any{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
+			},
+			args: args{
+				filter: []filter.Filter{},
+			},
+			want:    nil,
+			wantErr: "at least one filter must be used",
+		},
+		{
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereIsOnlyOneObject",
 			fields: fields{
 				singletonObjects: map[string]any{
 					"anyObjectName": anyObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName": anyObjectType,
 				},
 			},
 			args: args{
 				filter: []filter.Filter{},
 			},
-			want: anyObject,
+			want:    nil,
+			wantErr: "at least one filter must be used",
 		},
 		{
-			name: "ShouldReturnErrorWithoutFiltersIfThereAreManyObjects",
+			name: "ShouldReturnNoFilterErrorWithoutFiltersIfThereAreManyObjects",
 			fields: fields{
 				singletonObjects: map[string]any{
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -94,7 +190,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				filter: []filter.Filter{},
 			},
 			want:    nil,
-			wantErr: "cannot distinguish objects because too many matching found",
+			wantErr: "at least one filter must be used",
 		},
 		{
 			name: "ShouldReturnObjectWithByNameFilterIfObjectWithNameExists",
@@ -103,7 +199,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -119,7 +215,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			name: "ShouldReturnErrorWithByNameFilterIfObjectWithNameDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -136,7 +232,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -152,7 +248,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			name: "ShouldReturnErrorWithByTypeOfFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -160,7 +256,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found object with type '*AnyType'",
+			wantErr: "not found object with type '*component.AnyType'",
 		},
 		{
 			name: "ShouldReturnObjectWithByTypeOfFilterIfThereIsOnlyOneObjectImplementingInterface",
@@ -169,7 +265,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -188,7 +284,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -208,7 +304,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -224,7 +320,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			name: "ShouldReturnErrorWithByTypeFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -232,7 +328,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found object with type '*AnyType'",
+			wantErr: "not found object with type '*component.AnyType'",
 		},
 		{
 			name: "ShouldReturnObjectWithAllFiltersIfObjectExists",
@@ -241,7 +337,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -259,7 +355,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			name: "ShouldReturnErrorWithAllFiltersIfObjectDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -269,7 +365,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				},
 			},
 			want:    nil,
-			wantErr: "not found object with name 'anyObjectName' and type '*AnyType'",
+			wantErr: "not found object with name 'anyObjectName' and type '*component.AnyType'",
 		},
 	}
 	for _, testCase := range testCases {
@@ -279,7 +375,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			registry.typesOfSingletonObjects = testCase.fields.typesOfSingletonObjects
 
 			got, err := registry.Find(testCase.args.filter...)
-			if testCase.wantErr != "" {
+			if err != nil || testCase.wantErr != "" {
 				if err != nil {
 					assert.Equal(t, testCase.wantErr, err.Error(), "failed for test case '%s'", testCase.name)
 				} else {
@@ -299,13 +395,13 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 
 	type fields struct {
 		singletonObjects        map[string]any
-		typesOfSingletonObjects map[string]reflector.Type
+		typesOfSingletonObjects map[string]reflect.Type
 	}
 
 	anyObject := &AnyType{}
 	anotherObject := &AnotherType{}
-	anyObjectType := reflector.TypeOfAny(anyObject)
-	anotherObjectType := reflector.TypeOfAny(anotherObject)
+	anyObjectType := reflect.TypeOf(anyObject)
+	anotherObjectType := reflect.TypeOf(anotherObject)
 
 	testCases := []struct {
 		name     string
@@ -321,7 +417,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 				singletonObjects: map[string]any{
 					"anyObjectName": anyObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName": anyObjectType,
 				},
 			},
@@ -338,7 +434,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -356,7 +452,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -373,7 +469,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			name: "ShouldReturnNilAndFalseWithByNameFilterIfObjectWithNameDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -390,7 +486,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -407,7 +503,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			name: "ShouldReturnNilAndFalseWithByTypeOfFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -424,7 +520,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -444,7 +540,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -461,7 +557,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			name: "ShouldReturnNilAndFalseWithByTypeFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -478,7 +574,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -497,7 +593,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			name: "ShouldReturnNilAndFalseWithAllFiltersIfObjectDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -642,13 +738,13 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 
 	type fields struct {
 		singletonObjects        map[string]any
-		typesOfSingletonObjects map[string]reflector.Type
+		typesOfSingletonObjects map[string]reflect.Type
 	}
 
 	anyObject := &AnyType{}
 	anotherObject := &AnotherType{}
-	anyObjectType := reflector.TypeOfAny(anyObject)
-	anotherObjectType := reflector.TypeOfAny(anotherObject)
+	anyObjectType := reflect.TypeOf(anyObject)
+	anotherObjectType := reflect.TypeOf(anotherObject)
 
 	testCases := []struct {
 		name   string
@@ -662,7 +758,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 				singletonObjects: map[string]any{
 					"anyObjectName": anyObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName": anyObjectType,
 				},
 			},
@@ -678,7 +774,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -695,7 +791,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -711,7 +807,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			name: "ShouldReturnEmptySliceWithByNameFilterIfObjectWithNameDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -727,7 +823,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -743,7 +839,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			name: "ShouldReturnEmptySliceWithByTypeOfFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -759,7 +855,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -778,7 +874,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -797,7 +893,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -813,7 +909,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			name: "ShouldReturnEmptySliceWithByTypeFilterIfObjectWithTypeDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{
@@ -829,7 +925,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 					"anyObjectName":     anyObject,
 					"anotherObjectName": anotherObject,
 				},
-				typesOfSingletonObjects: map[string]reflector.Type{
+				typesOfSingletonObjects: map[string]reflect.Type{
 					"anyObjectName":     anyObjectType,
 					"anotherObjectName": anotherObjectType,
 				},
@@ -847,7 +943,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			name: "ShouldReturnEmptySliceWithAllFiltersIfObjectDoesNotExist",
 			fields: fields{
 				singletonObjects:        map[string]any{},
-				typesOfSingletonObjects: map[string]reflector.Type{},
+				typesOfSingletonObjects: map[string]reflect.Type{},
 			},
 			args: args{
 				filter: []filter.Filter{

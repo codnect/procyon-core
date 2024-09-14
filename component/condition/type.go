@@ -3,16 +3,16 @@ package condition
 import (
 	"codnect.io/procyon-core/component"
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
+	"reflect"
 )
 
 type OnTypeCondition struct {
-	typ reflector.Type
+	typ reflect.Type
 }
 
 func OnType[T any]() *OnTypeCondition {
 	return &OnTypeCondition{
-		typ: reflector.TypeOf[T](),
+		typ: reflect.TypeFor[T](),
 	}
 }
 
@@ -24,12 +24,12 @@ func (c *OnTypeCondition) MatchesCondition(ctx component.ConditionContext) bool 
 }
 
 type OnMissingTypeCondition struct {
-	missingType reflector.Type
+	missingType reflect.Type
 }
 
 func OnMissingType[T any]() *OnMissingTypeCondition {
 	return &OnMissingTypeCondition{
-		missingType: reflector.TypeOf[T](),
+		missingType: reflect.TypeFor[T](),
 	}
 }
 

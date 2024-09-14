@@ -1,8 +1,8 @@
 package component
 
 import (
-	"codnect.io/reflector"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -16,19 +16,19 @@ func TestObjectNotFoundError_ErrorShouldReturnErrorMessageIfNameIsProvided(t *te
 
 func TestObjectNotFoundError_ErrorShouldReturnErrorMessageIfTypeIsProvided(t *testing.T) {
 	err := ObjectNotFoundError{
-		typ: reflector.TypeOf[AnyType](),
+		typ: reflect.TypeFor[AnyType](),
 	}
 
-	assert.Equal(t, "not found object with type 'AnyType'", err.Error())
+	assert.Equal(t, "not found object with type 'component.AnyType'", err.Error())
 }
 
 func TestObjectNotFoundError_ErrorShouldReturnErrorMessageIfTypeAndNameAreProvided(t *testing.T) {
 	err := ObjectNotFoundError{
 		name: "anyObjectName",
-		typ:  reflector.TypeOf[AnyType](),
+		typ:  reflect.TypeFor[AnyType](),
 	}
 
-	assert.Equal(t, "not found object with name 'anyObjectName' and type 'AnyType'", err.Error())
+	assert.Equal(t, "not found object with name 'anyObjectName' and type 'component.AnyType'", err.Error())
 }
 
 func TestDefinitionNotFoundError_ErrorShouldReturnErrorMessageIfNameIsProvided(t *testing.T) {
@@ -41,17 +41,17 @@ func TestDefinitionNotFoundError_ErrorShouldReturnErrorMessageIfNameIsProvided(t
 
 func TestDefinitionNotFoundError_ErrorShouldReturnErrorMessageIfTypeIsProvided(t *testing.T) {
 	err := DefinitionNotFoundError{
-		typ: reflector.TypeOf[AnyType](),
+		typ: reflect.TypeFor[AnyType](),
 	}
 
-	assert.Equal(t, "not found definition with type 'AnyType'", err.Error())
+	assert.Equal(t, "not found definition with type 'component.AnyType'", err.Error())
 }
 
 func TestDefinitionNotFoundError_ErrorShouldReturnErrorMessageIfTypeAndNameAreProvided(t *testing.T) {
 	err := DefinitionNotFoundError{
 		name: "anyObjectName",
-		typ:  reflector.TypeOf[AnyType](),
+		typ:  reflect.TypeFor[AnyType](),
 	}
 
-	assert.Equal(t, "not found definition with name 'anyObjectName' and type 'AnyType'", err.Error())
+	assert.Equal(t, "not found definition with name 'anyObjectName' and type 'component.AnyType'", err.Error())
 }

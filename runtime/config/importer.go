@@ -1,9 +1,9 @@
 package config
 
 import (
-	"codnect.io/reflector"
 	"context"
 	"fmt"
+	"reflect"
 )
 
 type Importer struct {
@@ -68,7 +68,7 @@ func (i *Importer) findLoader(resource Resource) (Loader, error) {
 		if loader.IsLoadable(resource) {
 
 			if result != nil {
-				return nil, fmt.Errorf("multiple loaders found for resource '%s'", reflector.TypeOfAny(resource).Name())
+				return nil, fmt.Errorf("multiple loaders found for resource '%s'", reflect.TypeOf(resource).Name())
 			}
 
 			result = loader
@@ -76,7 +76,7 @@ func (i *Importer) findLoader(resource Resource) (Loader, error) {
 	}
 
 	if result == nil {
-		return nil, fmt.Errorf("no loader found for resource '%s'", reflector.TypeOfAny(resource).Name())
+		return nil, fmt.Errorf("no loader found for resource '%s'", reflect.TypeOf(resource).Name())
 	}
 
 	return result, nil

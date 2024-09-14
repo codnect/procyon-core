@@ -29,11 +29,11 @@ func (r *SourcesResolver) ContainsProperty(name string) bool {
 func (r *SourcesResolver) Property(name string) (any, bool) {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
-			return value.(string), true
+			return value, true
 		}
 	}
 
-	return "", false
+	return nil, false
 }
 
 func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue any) any {
@@ -75,7 +75,7 @@ func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError 
 				value, ok := r.Property(name)
 
 				if !ok && !continueOnError {
-					return "", fmt.Errorf("could not resolve placeholder '%s'", s[j:i+w+1])
+					return "", fmt.Errorf("cannot resolve placeholder '%s'", s[j:i+w+1])
 				}
 
 				stringValue, canConvert := value.(string)

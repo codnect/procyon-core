@@ -90,7 +90,7 @@ func ParseArguments(args []string) (*Arguments, error) {
 			optionValue = strings.TrimSpace(optionValue)
 
 			if optionName == "" {
-				return cmdLineArgs, errors.New("Invalid argument syntax : " + arg)
+				return cmdLineArgs, errors.New("invalid argument syntax : " + arg)
 			}
 
 			cmdLineArgs.addOptionArgs(optionName, optionValue)

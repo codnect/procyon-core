@@ -2,9 +2,9 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 	"unicode"
@@ -13,11 +13,10 @@ import (
 type Option func(definition *Definition) error
 
 type Definition struct {
-	name            string
-	typ             reflector.Type
-	scope           string
-	constructor     reflector.Function
-	constructorArgs []*ConstructorArgument
+	name        string
+	typ         reflect.Type
+	scope       string
+	constructor *Constructor
 }
 
 type DefinitionRegistry interface {
@@ -31,47 +30,54 @@ type DefinitionRegistry interface {
 	Count() int
 }
 
-func MakeDefinition(constructor Constructor, options ...Option) (*Definition, error) {
-	if constructor == nil {
-		return nil, fmt.Errorf("constructor should not be nil")
+func MakeDefinition(constructorFunc ConstructorFunc, options ...Option) (*Definition, error) {
+	if constructorFunc == nil {
+		return nil, fmt.Errorf("nil constructor function")
 	}
 
-	constructorType := reflector.TypeOfAny(constructor)
-	if !reflector.IsFunction(constructorType) {
-		return nil, fmt.Errorf("constructor should be a function")
+	constructorType := reflect.TypeOf(constructorFunc)
+
+	if constructorType.Kind() != reflect.Func {
+		return nil, fmt.Errorf("constructor must be a function")
 	}
 
-	constructorFunc := reflector.ToFunction(constructorType)
-	if constructorFunc.NumResult() != 1 {
-		return nil, fmt.Errorf("constructor can only be a function returning one result")
+	if constructorType.NumOut() != 1 {
+		return nil, fmt.Errorf("constructor must only be a function returning one result")
 	}
 
-	returnType := constructorFunc.Results()[0]
+	returnType := constructorType.Out(0)
 	definitionName := ""
 
-	if reflector.IsPointer(returnType) {
-		pointerType := reflector.ToPointer(returnType)
-		definitionName = pointerType.Elem().Name()
+	if returnType.Kind() == reflect.Pointer {
+		definitionName = returnType.Elem().Name()
 	} else {
 		definitionName = returnType.Name()
 	}
 
 	definition := &Definition{
-		name:            lowerCamelCase(definitionName),
-		typ:             returnType,
-		scope:           SingletonScope,
-		constructor:     constructorFunc,
-		constructorArgs: make([]*ConstructorArgument, 0),
+		name:  lowerCamelCase(definitionName),
+		typ:   returnType,
+		scope: SingletonScope,
+		constructor: &Constructor{
+			funcType:  constructorType,
+			funcValue: reflect.ValueOf(constructorFunc),
+			arguments: make([]ConstructorArgument, 0),
+		},
 	}
 
-	for index, parameterType := range constructorFunc.Parameters() {
-		arg := &ConstructorArgument{
+	numIn := constructorType.NumIn()
+	constructor := definition.Constructor()
+
+	for index := 0; index < numIn; index++ {
+		argType := constructorType.In(index)
+
+		arg := ConstructorArgument{
 			index:    index,
-			typ:      parameterType,
+			typ:      argType,
 			optional: false,
 		}
 
-		definition.constructorArgs = append(definition.constructorArgs, arg)
+		constructor.arguments = append(constructor.arguments, arg)
 	}
 
 	for _, option := range options {
@@ -88,11 +94,11 @@ func (d *Definition) Name() string {
 	return d.name
 }
 
-func (d *Definition) Type() reflector.Type {
+func (d *Definition) Type() reflect.Type {
 	return d.typ
 }
 
-func (d *Definition) Constructor() reflector.Function {
+func (d *Definition) Constructor() *Constructor {
 	return d.constructor
 }
 
@@ -106,16 +112,6 @@ func (d *Definition) IsSingleton() bool {
 
 func (d *Definition) IsPrototype() bool {
 	return d.scope == PrototypeScope
-}
-
-func (d *Definition) ConstructorArguments() []*ConstructorArgument {
-	copyOfArgs := make([]*ConstructorArgument, 0)
-
-	for _, arg := range d.constructorArgs {
-		copyOfArgs = append(copyOfArgs, arg)
-	}
-
-	return copyOfArgs
 }
 
 func lowerCamelCase(str string) string {
@@ -182,6 +178,10 @@ func (r *ObjectDefinitionRegistry) Contains(name string) bool {
 }
 
 func (r *ObjectDefinitionRegistry) Find(filters ...filter.Filter) (*Definition, error) {
+	if len(filters) == 0 {
+		return nil, errors.New("at least one filter must be used")
+	}
+
 	definitionList := r.List(filters...)
 
 	if len(definitionList) > 1 {
@@ -227,14 +227,8 @@ func (r *ObjectDefinitionRegistry) List(filters ...filter.Filter) []*Definition 
 			continue
 		}
 
-		if canConvert(definition.Type(), filterOpts.Type) {
+		if matchTypes(definition.Type(), filterOpts.Type) {
 			definitionList = append(definitionList, definition)
-		} else if reflector.IsPointer(definition.Type()) {
-			ptrType := reflector.ToPointer(definition.Type())
-
-			if canConvert(ptrType.Elem(), filterOpts.Type) {
-				definitionList = append(definitionList, definition)
-			}
 		}
 	}
 

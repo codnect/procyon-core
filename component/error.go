@@ -1,14 +1,14 @@
 package component
 
 import (
-	"codnect.io/reflector"
 	"fmt"
+	"reflect"
 	"strings"
 )
 
 type ObjectNotFoundError struct {
 	name string
-	typ  reflector.Type
+	typ  reflect.Type
 }
 
 func (e ObjectNotFoundError) Error() string {
@@ -23,7 +23,7 @@ func (e ObjectNotFoundError) Error() string {
 	}
 
 	if e.typ != nil {
-		builder.WriteString(fmt.Sprintf(" type '%s'", e.typ.Name()))
+		builder.WriteString(fmt.Sprintf(" type '%s'", e.typ.String()))
 	}
 
 	return builder.String()
@@ -31,7 +31,7 @@ func (e ObjectNotFoundError) Error() string {
 
 type DefinitionNotFoundError struct {
 	name string
-	typ  reflector.Type
+	typ  reflect.Type
 }
 
 func (e DefinitionNotFoundError) Error() string {
@@ -46,7 +46,7 @@ func (e DefinitionNotFoundError) Error() string {
 	}
 
 	if e.typ != nil {
-		builder.WriteString(fmt.Sprintf(" type '%s'", e.typ.Name()))
+		builder.WriteString(fmt.Sprintf(" type '%s'", e.typ.String()))
 	}
 
 	return builder.String()

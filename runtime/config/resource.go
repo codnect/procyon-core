@@ -22,15 +22,15 @@ type FileResource struct {
 
 func newFileResource(path string, file fs.File, loader property.SourceLoader) *FileResource {
 	if strings.TrimSpace(path) == "" {
-		panic("path cannot be empty or blank")
+		panic("cannot create file resource with empty or blank path")
 	}
 
 	if file == nil {
-		panic("file cannot be nil")
+		panic("nil file")
 	}
 
 	if loader == nil {
-		panic("loader cannot be nil")
+		panic("nil loader")
 	}
 
 	return &FileResource{

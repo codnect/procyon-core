@@ -16,6 +16,10 @@ func OnObject(name string) *OnObjectCondition {
 
 func (c *OnObjectCondition) MatchesCondition(ctx component.ConditionContext) bool {
 	container := ctx.Container()
+	if container == nil {
+		return false
+	}
+
 	return container.Definitions().Contains(c.name) || container.Singletons().Contains(c.name)
 }
 
@@ -31,5 +35,9 @@ func OnMissingObject(name string) *OnMissingObjectCondition {
 
 func (c *OnMissingObjectCondition) MatchesCondition(ctx component.ConditionContext) bool {
 	container := ctx.Container()
+	if container == nil {
+		return false
+	}
+
 	return !container.Definitions().Contains(c.name) && !container.Singletons().Contains(c.name)
 }

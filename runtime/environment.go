@@ -48,7 +48,7 @@ func NewDefaultEnvironment() *DefaultEnvironment {
 
 func (e *DefaultEnvironment) validateProfile(profile string) error {
 	if strings.TrimSpace(profile) == "" {
-		return fmt.Errorf("`%s` is a invalid profile", profile)
+		return fmt.Errorf("'%s' is a invalid profile", profile)
 	}
 
 	return nil

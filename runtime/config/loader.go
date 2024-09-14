@@ -1,10 +1,10 @@
 package config
 
 import (
-	"codnect.io/reflector"
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 )
 
 type Loader interface {
@@ -26,7 +26,11 @@ func (l *FileLoader) IsLoadable(resource Resource) bool {
 
 func (l *FileLoader) LoadConfig(ctx context.Context, resource Resource) (*Config, error) {
 	if resource == nil {
-		return nil, errors.New("resource cannot be nil")
+		return nil, errors.New("nil context")
+	}
+
+	if resource == nil {
+		return nil, errors.New("nil resource")
 	}
 
 	if fileResource, ok := resource.(*FileResource); ok {
@@ -40,5 +44,5 @@ func (l *FileLoader) LoadConfig(ctx context.Context, resource Resource) (*Config
 		return New(source), err
 	}
 
-	return nil, fmt.Errorf("resource %s is not supported", reflector.TypeOfAny(resource).Name())
+	return nil, fmt.Errorf("resource '%s' is not supported", reflect.TypeOf(resource).Name())
 }

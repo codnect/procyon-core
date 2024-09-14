@@ -2,7 +2,6 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"context"
 	"fmt"
 	"sync"
@@ -22,8 +21,8 @@ type Initialization interface {
 	DoInit(ctx context.Context) error
 }
 
-func createComponent(constructor Constructor, options ...Option) *Component {
-	definition, err := MakeDefinition(constructor, options...)
+func createComponent(constructorFunc ConstructorFunc, options ...Option) *Component {
+	definition, err := MakeDefinition(constructorFunc, options...)
 
 	if err != nil {
 		panic(err)
@@ -61,11 +60,11 @@ func (r Registration) ConditionalOn(condition Condition) Registration {
 	return r
 }
 
-func Register(constructor Constructor, options ...Option) Registration {
+func Register(constructorFunc ConstructorFunc, options ...Option) Registration {
 	defer muComponents.Unlock()
 	muComponents.Lock()
 
-	component := createComponent(constructor, options...)
+	component := createComponent(constructorFunc, options...)
 	componentName := component.Definition().Name()
 
 	if _, exists := components[componentName]; exists {
@@ -98,14 +97,8 @@ func List(filters ...filter.Filter) []*Component {
 			continue
 		}
 
-		if canConvert(definition.Type(), filterOpts.Type) {
+		if matchTypes(definition.Type(), filterOpts.Type) {
 			componentList = append(componentList, component)
-		} else if reflector.IsPointer(definition.Type()) {
-			ptrType := reflector.ToPointer(definition.Type())
-
-			if canConvert(ptrType.Elem(), filterOpts.Type) {
-				componentList = append(componentList, component)
-			}
 		}
 	}
 

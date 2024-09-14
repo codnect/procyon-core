@@ -30,7 +30,7 @@ func (m *SimpleMulticaster) AddEventListener(listener Listener) error {
 	m.mu.Lock()
 
 	if listener == nil {
-		return errors.New("event listener cannot be nil")
+		return errors.New("nil event listener")
 	}
 
 	m.listeners = append(m.listeners, listener)
@@ -38,18 +38,20 @@ func (m *SimpleMulticaster) AddEventListener(listener Listener) error {
 }
 
 func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event ApplicationEvent) error {
-	defer m.mu.Unlock()
 	m.mu.Lock()
+	listeners := make([]Listener, len(m.listeners))
+	copy(listeners, m.listeners)
+	m.mu.Unlock()
 
 	if ctx == nil {
-		return errors.New("context cannot be nil")
+		return errors.New("nil context")
 	}
 
 	if event == nil {
-		return errors.New("event cannot be nil")
+		return errors.New("nil event")
 	}
 
-	for _, listener := range m.listeners {
+	for _, listener := range listeners {
 		if listener.SupportsEvent(event) {
 			err := listener.OnEvent(ctx, event)
 
@@ -67,11 +69,11 @@ func (m *SimpleMulticaster) MulticastEventAsync(ctx context.Context, event Appli
 	m.mu.Lock()
 
 	if ctx == nil {
-		return errors.New("context cannot be nil")
+		return errors.New("nil context")
 	}
 
 	if event == nil {
-		return errors.New("event cannot be nil")
+		return errors.New("nil event")
 	}
 
 	for _, listener := range m.listeners {
@@ -93,7 +95,7 @@ func (m *SimpleMulticaster) RemoveEventListener(eventListener Listener) error {
 	m.mu.Lock()
 
 	if eventListener == nil {
-		return errors.New("event listener cannot be nil")
+		return errors.New("nil event listener")
 	}
 
 	for index, listener := range m.listeners {

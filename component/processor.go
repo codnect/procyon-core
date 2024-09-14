@@ -1,8 +1,9 @@
 package component
 
 import (
-	"codnect.io/reflector"
 	"context"
+	"fmt"
+	"reflect"
 )
 
 type ObjectProcessor interface {
@@ -28,7 +29,9 @@ func (c processorChecker) ProcessBeforeInit(ctx context.Context, object any) (an
 
 func (c processorChecker) ProcessAfterInit(ctx context.Context, object any) (any, error) {
 	if _, ok := object.(ObjectProcessor); !ok && c.container.ObjectProcessorCount() < c.processorCount {
-		log.I(ctx, "Component '{}' is not eligible for ObjectProcessor", fullTypeName(reflector.TypeOfAny(object)))
+		typ := reflect.TypeOf(object)
+		typeName := fmt.Sprintf("%s.%s", typ.PkgPath(), typ.Name())
+		log.I(ctx, "Component '{}' is not eligible for ObjectProcessor", typeName)
 	}
 
 	return object, nil

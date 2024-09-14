@@ -2,9 +2,9 @@ package component
 
 import (
 	"codnect.io/procyon-core/component/filter"
-	"codnect.io/reflector"
 	"context"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -30,12 +30,12 @@ func TestDefinitionLoader_LoadDefinitionsShouldLoadDefinitionsIfComponentConditi
 	assert.NotNil(t, definition)
 
 	assert.Equal(t, "anyObjectName", definition.Name())
-	assert.Equal(t, reflector.TypeOf[*AnyType]().ReflectType(), definition.Type().ReflectType())
+	assert.Equal(t, reflect.TypeFor[*AnyType](), definition.Type())
 	assert.Equal(t, SingletonScope, definition.Scope())
 	assert.True(t, definition.IsSingleton())
 	assert.False(t, definition.IsPrototype())
-	assert.Equal(t, reflector.TypeOfAny(anyConstructorFunction).ReflectType(), definition.Constructor().ReflectType())
-	assert.Len(t, definition.ConstructorArguments(), 0)
+	assert.NotNil(t, definition.Constructor())
+	assert.Len(t, definition.Constructor().Arguments(), 0)
 }
 
 func TestDefinitionLoader_LoadDefinitionsShouldNotLoadDefinitionsIfComponentConditionsAreNotMet(t *testing.T) {

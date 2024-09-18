@@ -1,7 +1,7 @@
 package condition
 
 import (
-	"codnect.io/procyon-core/component"
+	"codnect.io/procyon-core/component/container"
 	"codnect.io/procyon-core/runtime"
 	"codnect.io/procyon-core/runtime/property"
 	"context"
@@ -11,7 +11,7 @@ import (
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyExists(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName")
-	container := component.NewContainer()
+	objectContainer := container.New()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": true,
@@ -19,26 +19,26 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyExists(t 
 
 	environment := runtime.NewDefaultEnvironment()
 	environment.PropertySources().AddLast(anyPropertySource)
-	container.Singletons().Register("environment", environment)
+	objectContainer.Singletons().Register("environment", environment)
 
-	conditionContext := NewContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), objectContainer)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueEvenIfPropertyDoesNotExistAndMatchIfMissingIsCalled(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").MatchIfMissing(true)
-	container := component.NewContainer()
+	objectContainer := container.New()
 
 	environment := runtime.NewDefaultEnvironment()
-	container.Singletons().Register("environment", environment)
+	objectContainer.Singletons().Register("environment", environment)
 
-	conditionContext := NewContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), objectContainer)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueEqualsToGivenValue(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").HavingValue("anyPropertyValue")
-	container := component.NewContainer()
+	objectContainer := container.New()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": "anyPropertyValue",
@@ -46,15 +46,15 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueEqua
 
 	environment := runtime.NewDefaultEnvironment()
 	environment.PropertySources().AddLast(anyPropertySource)
-	container.Singletons().Register("environment", environment)
+	objectContainer.Singletons().Register("environment", environment)
 
-	conditionContext := NewContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), objectContainer)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueDoesNotEqualToGivenValue(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").HavingValue("anotherPropertyValue")
-	container := component.NewContainer()
+	objectContainer := container.New()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": "anyPropertyValue",
@@ -62,16 +62,16 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueDoes
 
 	environment := runtime.NewDefaultEnvironment()
 	environment.PropertySources().AddLast(anyPropertySource)
-	container.Singletons().Register("environment", environment)
+	objectContainer.Singletons().Register("environment", environment)
 
-	conditionContext := NewContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), objectContainer)
 	assert.False(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnFalseIfEnvironmentObjectDoesNotExist(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName")
-	container := component.NewContainer()
+	objectContainer := container.New()
 
-	conditionContext := NewContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), objectContainer)
 	assert.False(t, onPropertyCondition.MatchesCondition(conditionContext))
 }

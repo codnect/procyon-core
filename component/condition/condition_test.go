@@ -1,7 +1,7 @@
 package condition
 
 import (
-	"codnect.io/procyon-core/component"
+	"codnect.io/procyon-core/component/container"
 	"context"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -19,7 +19,7 @@ func (t MockCondition) MatchesCondition(ctx Context) bool {
 }
 
 func TestNewConditionContextShouldCreateContextProperly(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	ctx := context.Background()
 
 	conditionContext := NewContext(ctx, container)
@@ -28,7 +28,7 @@ func TestNewConditionContextShouldCreateContextProperly(t *testing.T) {
 }
 
 func TestNewConditionContextShouldPanicIfContextIsNotProvided(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	assert.PanicsWithValue(t, "nil context", func() {
 		NewContext(nil, container)
 	})
@@ -41,7 +41,7 @@ func TestNewConditionContextShouldPanicIfContainerIsNotProvided(t *testing.T) {
 }
 
 func TestConditionContext_DeadlineShouldReturnWhenContextIsTimeout(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	now := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
 
@@ -52,7 +52,7 @@ func TestConditionContext_DeadlineShouldReturnWhenContextIsTimeout(t *testing.T)
 }
 
 func TestConditionContext_DoneShouldWaitForContextToBeCompleted(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	now := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*1)
 
@@ -62,14 +62,14 @@ func TestConditionContext_DoneShouldWaitForContextToBeCompleted(t *testing.T) {
 }
 
 func TestConditionContext_ErrShouldNotReturnErrorIfContextIsNotCancelled(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 
 	conditionContext := NewContext(context.Background(), container)
 	assert.Nil(t, conditionContext.Err())
 }
 
 func TestConditionContext_ErrShouldReturnErrorIfContextIsCancelled(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	cancelFunc()
 
@@ -78,7 +78,7 @@ func TestConditionContext_ErrShouldReturnErrorIfContextIsCancelled(t *testing.T)
 }
 
 func TestConditionContext_ValueShouldReturnAssociatedValueWithKey(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	ctx := context.WithValue(context.Background(), "anyKey", "anyValue")
 
 	conditionContext := NewContext(ctx, container)
@@ -86,28 +86,28 @@ func TestConditionContext_ValueShouldReturnAssociatedValueWithKey(t *testing.T) 
 }
 
 func TestConditionContext_ContainerShouldReturnAnyContainerObject(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 
 	conditionContext := NewContext(context.Background(), container)
 	assert.Equal(t, container, conditionContext.Container())
 }
 
 func TestNewConditionEvaluatorShouldCreateEvaluatorProperly(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 
 	evaluator := NewEvaluator(container)
 	assert.Equal(t, container, evaluator.container)
 }
 
 func TestConditionEvaluator_EvaluateShouldReturnTrueIfAnyConditionIsNotProvided(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 
 	evaluator := NewEvaluator(container)
 	assert.True(t, evaluator.Evaluate(context.Background(), nil))
 }
 
 func TestConditionEvaluator_EvaluateShouldReturnTrueIfConditionMatch(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	ctx := context.Background()
 	conditionContext := NewContext(ctx, container)
 
@@ -119,7 +119,7 @@ func TestConditionEvaluator_EvaluateShouldReturnTrueIfConditionMatch(t *testing.
 }
 
 func TestConditionEvaluator_EvaluateShouldReturnFalseIfConditionDoesNotMatch(t *testing.T) {
-	container := component.NewContainer()
+	container := container.New()
 	ctx := context.Background()
 	conditionContext := NewContext(ctx, container)
 

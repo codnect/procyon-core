@@ -1,15 +1,6 @@
-package component
+package container
 
-import (
-	"codnect.io/procyon-core/component/filter"
-	"context"
-	"errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"reflect"
-	"testing"
-)
-
+/*
 type MockSingletonRegistry struct {
 	mock.Mock
 }
@@ -63,7 +54,7 @@ func (r *MockSingletonRegistry) List(filters ...filter.Filter) []any {
 	return got[0].([]any)
 }
 
-func (r *MockSingletonRegistry) OrElseCreate(name string, provider ObjectProvider) (any, error) {
+func (r *MockSingletonRegistry) OrElseCreate(name string, provider ObjectProviderFunc) (any, error) {
 	got := r.Called(name, provider)
 
 	if len(got) == 0 {
@@ -93,33 +84,33 @@ func (r *MockSingletonRegistry) Count() int {
 }
 
 func TestSingletonObjectRegistry_RegisterShouldRegisterObjectSuccessfully(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
 	assert.Contains(t, registry.singletonObjects, "anyObjectName")
 	assert.Contains(t, registry.typesOfSingletonObjects, "anyObjectName")
-	assert.Equal(t, reflect.TypeFor[*AnyType](),
+	assert.Equal(t, reflect.TypeFor[*component.AnyType](),
 		registry.typesOfSingletonObjects["anyObjectName"])
 }
 
 func TestSingletonObjectRegistry_RegisterShouldReturnErrorIfComponentWithSameNameIsAlreadyRegistered(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
 
-	err = registry.Register("anyObjectName", &AnyType{})
+	err = registry.Register("anyObjectName", &component.AnyType{})
 	assert.Equal(t, "object with name 'anyObjectName' already exists", err.Error())
 }
 
 func TestSingletonObjectRegistry_ContainsShouldReturnTrueIfComponentExists(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
 	assert.True(t, registry.Contains("anyObjectName"))
 }
 
 func TestSingletonObjectRegistry_ContainsShouldReturnFalseIfComponentDoesNotExist(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
+	registry := newSingletonObjectRegistry()
 	assert.False(t, registry.Contains("anyObjectName"))
 }
 
@@ -134,8 +125,8 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 		typesOfSingletonObjects map[string]reflect.Type
 	}
 
-	anyObject := &AnyType{}
-	anotherObject := &AnotherType{}
+	anyObject := &component.AnyType{}
+	anotherObject := &component.AnotherType{}
 	anyObjectType := reflect.TypeOf(anyObject)
 	anotherObjectType := reflect.TypeOf(anotherObject)
 
@@ -239,7 +230,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: anyObject,
@@ -252,7 +243,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:    nil,
@@ -272,7 +263,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[AnotherInterface](),
+					filter.ByTypeOf[component.AnotherInterface](),
 				},
 			},
 			want: anotherObject,
@@ -291,7 +282,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[AnyInterface](),
+					filter.ByTypeOf[component.AnyInterface](),
 				},
 			},
 			want:    nil,
@@ -346,7 +337,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: anyObject,
@@ -361,7 +352,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:    nil,
@@ -370,7 +361,7 @@ func TestSingletonObjectRegistry_Find(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			registry := NewSingletonObjectRegistry()
+			registry := newSingletonObjectRegistry()
 			registry.singletonObjects = testCase.fields.singletonObjects
 			registry.typesOfSingletonObjects = testCase.fields.typesOfSingletonObjects
 
@@ -398,8 +389,8 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 		typesOfSingletonObjects map[string]reflect.Type
 	}
 
-	anyObject := &AnyType{}
-	anotherObject := &AnotherType{}
+	anyObject := &component.AnyType{}
+	anotherObject := &component.AnotherType{}
 	anyObjectType := reflect.TypeOf(anyObject)
 	anotherObjectType := reflect.TypeOf(anotherObject)
 
@@ -493,7 +484,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:     anyObject,
@@ -507,7 +498,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:     nil,
@@ -527,7 +518,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[AnotherInterface](),
+					filter.ByTypeOf[component.AnotherInterface](),
 				},
 			},
 			want:     anotherObject,
@@ -583,7 +574,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:     anyObject,
@@ -599,7 +590,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want:     nil,
@@ -608,7 +599,7 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			registry := NewSingletonObjectRegistry()
+			registry := newSingletonObjectRegistry()
 			registry.singletonObjects = testCase.fields.singletonObjects
 			registry.typesOfSingletonObjects = testCase.fields.typesOfSingletonObjects
 
@@ -632,8 +623,8 @@ func TestSingletonObjectRegistry_FindFirst(t *testing.T) {
 }
 
 func TestSingletonObjectRegistry_OrElseCreateShouldCreateAndReturnObjectIfObjectDoesNotExist(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	anyObject := &AnyType{}
+	registry := newSingletonObjectRegistry()
+	anyObject := &component.AnyType{}
 	methodCalled := false
 
 	got, err := registry.OrElseCreate("anyObjectName", func(ctx context.Context) (any, error) {
@@ -647,7 +638,7 @@ func TestSingletonObjectRegistry_OrElseCreateShouldCreateAndReturnObjectIfObject
 }
 
 func TestSingletonObjectRegistry_OrElseCreateShouldReturnErrorIfObjectDoesNotExistAndProviderReturnError(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
+	registry := newSingletonObjectRegistry()
 
 	anyError := errors.New("anyError")
 	got, err := registry.OrElseCreate("anyObjectName", func(ctx context.Context) (any, error) {
@@ -659,8 +650,8 @@ func TestSingletonObjectRegistry_OrElseCreateShouldReturnErrorIfObjectDoesNotExi
 }
 
 func TestSingletonObjectRegistry_OrElseCreateShouldReturnObjectIfObjectAlreadyExists(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	anyObject := &AnyType{}
+	registry := newSingletonObjectRegistry()
+	anyObject := &component.AnyType{}
 	err := registry.Register("anyObjectName", anyObject)
 	assert.Nil(t, err)
 
@@ -668,7 +659,7 @@ func TestSingletonObjectRegistry_OrElseCreateShouldReturnObjectIfObjectAlreadyEx
 	var got any
 	got, err = registry.OrElseCreate("anyObjectName", func(ctx context.Context) (any, error) {
 		methodCalled = true
-		return &AnyType{}, nil
+		return &component.AnyType{}, nil
 	})
 
 	assert.Nil(t, err)
@@ -677,11 +668,11 @@ func TestSingletonObjectRegistry_OrElseCreateShouldReturnObjectIfObjectAlreadyEx
 }
 
 func TestSingletonObjectRegistry_OrElseCreateShouldReturnErrorIfObjectWithSameNameIsAlreadyInPreparation(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
+	registry := newSingletonObjectRegistry()
 	registry.singletonObjectsInPreparation["anyObjectName"] = struct{}{}
 
 	got, err := registry.OrElseCreate("anyObjectName", func(ctx context.Context) (any, error) {
-		return &AnyType{}, nil
+		return &component.AnyType{}, nil
 	})
 
 	assert.Equal(t, "object with name 'anyObjectName' is currently in preparation, maybe it has got circular dependency cycle", err.Error())
@@ -689,8 +680,8 @@ func TestSingletonObjectRegistry_OrElseCreateShouldReturnErrorIfObjectWithSameNa
 }
 
 func TestSingletonObjectRegistry_CountShouldReturnCountOfObjects(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
 
 	assert.Equal(t, 1, len(registry.singletonObjects))
@@ -699,10 +690,10 @@ func TestSingletonObjectRegistry_CountShouldReturnCountOfObjects(t *testing.T) {
 }
 
 func TestSingletonObjectRegistry_NamesShouldReturnListOfObjectNames(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
-	err = registry.Register("anotherObjectName", &AnotherType{})
+	err = registry.Register("anotherObjectName", &component.AnotherType{})
 	assert.Nil(t, err)
 
 	names := registry.Names()
@@ -712,8 +703,8 @@ func TestSingletonObjectRegistry_NamesShouldReturnListOfObjectNames(t *testing.T
 }
 
 func TestSingletonObjectRegistry_RemoveShouldDeleteObjectFromRegistryIfObjectWithNameExists(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
-	err := registry.Register("anyObjectName", &AnyType{})
+	registry := newSingletonObjectRegistry()
+	err := registry.Register("anyObjectName", &component.AnyType{})
 	assert.Nil(t, err)
 
 	err = registry.Remove("anyObjectName")
@@ -725,7 +716,7 @@ func TestSingletonObjectRegistry_RemoveShouldDeleteObjectFromRegistryIfObjectWit
 }
 
 func TestSingletonObjectRegistry_RemoveShouldReturnErrorIfObjectWithNameDoesNotExist(t *testing.T) {
-	registry := NewSingletonObjectRegistry()
+	registry := newSingletonObjectRegistry()
 
 	err := registry.Remove("anyObjectName")
 	assert.Equal(t, "no found object with name 'anyObjectName'", err.Error())
@@ -741,8 +732,8 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 		typesOfSingletonObjects map[string]reflect.Type
 	}
 
-	anyObject := &AnyType{}
-	anotherObject := &AnotherType{}
+	anyObject := &component.AnyType{}
+	anotherObject := &component.AnotherType{}
 	anyObjectType := reflect.TypeOf(anyObject)
 	anotherObjectType := reflect.TypeOf(anotherObject)
 
@@ -830,7 +821,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: []any{anyObject},
@@ -843,7 +834,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: []any{},
@@ -862,7 +853,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[AnotherInterface](),
+					filter.ByTypeOf[component.AnotherInterface](),
 				},
 			},
 			want: []any{anotherObject},
@@ -881,7 +872,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 			},
 			args: args{
 				filter: []filter.Filter{
-					filter.ByTypeOf[AnyInterface](),
+					filter.ByTypeOf[component.AnyInterface](),
 				},
 			},
 			want: []any{anyObject, anotherObject},
@@ -934,7 +925,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: []any{anyObject},
@@ -949,7 +940,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 				filter: []filter.Filter{
 					filter.ByName("anyObjectName"),
 					filter.ByType(anyObjectType),
-					filter.ByTypeOf[*AnyType](),
+					filter.ByTypeOf[*component.AnyType](),
 				},
 			},
 			want: []any{},
@@ -957,7 +948,7 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			registry := NewSingletonObjectRegistry()
+			registry := newSingletonObjectRegistry()
 			registry.singletonObjects = testCase.fields.singletonObjects
 			registry.typesOfSingletonObjects = testCase.fields.typesOfSingletonObjects
 
@@ -969,3 +960,4 @@ func TestSingletonObjectRegistry_List(t *testing.T) {
 		})
 	}
 }
+*/

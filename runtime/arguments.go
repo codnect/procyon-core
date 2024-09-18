@@ -7,11 +7,13 @@ import (
 	"strings"
 )
 
+// Arguments struct represents the command line arguments passed to the application.
 type Arguments struct {
 	optArgs     map[string][]string
 	nonOptsArgs []string
 }
 
+// newArguments function creates a new Arguments struct.
 func newArguments() *Arguments {
 	return &Arguments{
 		optArgs:     make(map[string][]string),
@@ -19,14 +21,7 @@ func newArguments() *Arguments {
 	}
 }
 
-func (a *Arguments) addOptionArgs(name string, value string) {
-	if a.optArgs[name] == nil {
-		a.optArgs[name] = make([]string, 0)
-	}
-
-	a.optArgs[name] = append(a.optArgs[name], value)
-}
-
+// OptionNames method returns the names of the option arguments.
 func (a *Arguments) OptionNames() []string {
 	optNames := make([]string, 0)
 
@@ -37,22 +32,36 @@ func (a *Arguments) OptionNames() []string {
 	return optNames
 }
 
+// ContainsOption method checks whether the option argument with the given name exists.
 func (a *Arguments) ContainsOption(name string) bool {
 	return a.optArgs[name] != nil
 }
 
+// OptionValues method returns the values of the option argument with the given name.
 func (a *Arguments) OptionValues(name string) []string {
 	return a.optArgs[name]
 }
 
-func (a *Arguments) addNonOptionArgs(value string) {
-	a.nonOptsArgs = append(a.nonOptsArgs, value)
-}
-
+// NonOptionArgs method returns the non-option arguments.
 func (a *Arguments) NonOptionArgs() []string {
 	return a.nonOptsArgs
 }
 
+// addOptionArgs method adds a new option argument to the arguments.
+func (a *Arguments) addOptionArgs(name string, value string) {
+	if a.optArgs[name] == nil {
+		a.optArgs[name] = make([]string, 0)
+	}
+
+	a.optArgs[name] = append(a.optArgs[name], value)
+}
+
+// addNonOptionArgs method adds a non-option argument to the arguments.
+func (a *Arguments) addNonOptionArgs(value string) {
+	a.nonOptsArgs = append(a.nonOptsArgs, value)
+}
+
+// mergeArguments function merges the command line arguments with the given arguments.
 func mergeArguments(args ...string) []string {
 	mergedArgs := make([]string, 0)
 	copy(mergedArgs, os.Args)
@@ -60,6 +69,7 @@ func mergeArguments(args ...string) []string {
 	return mergedArgs
 }
 
+// ParseArguments function parses the given and the command line arguments and returns an Arguments.
 func ParseArguments(args []string) (*Arguments, error) {
 	mergedArgs := mergeArguments(args...)
 	cmdLineArgs := newArguments()

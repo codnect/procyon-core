@@ -13,6 +13,7 @@ const (
 	FileName = "procyon"
 )
 
+// ResourceResolver is an interface that represents a resource resolver.
 type ResourceResolver interface {
 	ResolveResources(ctx context.Context, location string, profiles []string) ([]Resource, error)
 }
@@ -22,6 +23,7 @@ type DefaultResourceResolver struct {
 	configName string
 }
 
+// NewDefaultResourceResolver function creates a new DefaultResourceResolver with the provided loaders.
 func NewDefaultResourceResolver(loaders []property.SourceLoader) *DefaultResourceResolver {
 	return &DefaultResourceResolver{
 		loaders:    loaders,
@@ -29,6 +31,8 @@ func NewDefaultResourceResolver(loaders []property.SourceLoader) *DefaultResourc
 	}
 }
 
+// ResolveResources method resolves resources from a location for specific profiles.
+// It returns a list of resources and an error if the resolution fails.
 func (r *DefaultResourceResolver) ResolveResources(ctx context.Context, location string, profiles []string) ([]Resource, error) {
 	resources := make([]Resource, 0)
 	if profiles == nil {
@@ -47,6 +51,8 @@ func (r *DefaultResourceResolver) ResolveResources(ctx context.Context, location
 	return resources, nil
 }
 
+// getResources method gets resources from a location for a specific profile.
+// It returns a list of resources.
 func (r *DefaultResourceResolver) getResources(profile string, location string) []Resource {
 	var (
 		configFile fs.File

@@ -7,6 +7,10 @@ import (
 	"sync"
 )
 
+// Environment interface represents the application environment.
+// It provides methods for accessing active and default profiles, checking if a profile is active,
+// setting and adding active profiles, setting default profiles, merging environments,
+// and accessing the property sources and property resolver.
 type Environment interface {
 	ActiveProfiles() []string
 	DefaultProfiles() []string
@@ -21,6 +25,7 @@ type Environment interface {
 	PropertyResolver() property.Resolver
 }
 
+// DefaultEnvironment struct represents the default implementation of the Environment interface.
 type DefaultEnvironment struct {
 	activeProfiles  map[string]struct{}
 	defaultProfiles map[string]struct{}
@@ -33,6 +38,7 @@ type DefaultEnvironment struct {
 	mu                  sync.RWMutex
 }
 
+// NewDefaultEnvironment function creates a new DefaultEnvironment.
 func NewDefaultEnvironment() *DefaultEnvironment {
 	return &DefaultEnvironment{
 		activeProfiles: map[string]struct{}{},
@@ -46,6 +52,7 @@ func NewDefaultEnvironment() *DefaultEnvironment {
 	}
 }
 
+// validateProfile function validates a profile name
 func (e *DefaultEnvironment) validateProfile(profile string) error {
 	if strings.TrimSpace(profile) == "" {
 		return fmt.Errorf("'%s' is a invalid profile", profile)
@@ -54,6 +61,7 @@ func (e *DefaultEnvironment) validateProfile(profile string) error {
 	return nil
 }
 
+// doGetActiveProfiles function retrieves the active profiles from the property resolver.
 func (e *DefaultEnvironment) doGetActiveProfiles() {
 	e.activeProfilesOnce.Do(func() {
 		propertyValue, ok := e.PropertyResolver().Property("procyon.profiles.active")
@@ -69,6 +77,7 @@ func (e *DefaultEnvironment) doGetActiveProfiles() {
 	})
 }
 
+// ActiveProfiles method returns the active profiles.
 func (e *DefaultEnvironment) ActiveProfiles() []string {
 	e.doGetActiveProfiles()
 
@@ -83,6 +92,7 @@ func (e *DefaultEnvironment) ActiveProfiles() []string {
 	return activeProfiles
 }
 
+// doGetDefaultProfiles function retrieves the default profiles from the property resolver.
 func (e *DefaultEnvironment) doGetDefaultProfiles() {
 	e.defaultProfilesOnce.Do(func() {
 		propertyValue, ok := e.PropertyResolver().Property("procyon.profiles.default")
@@ -98,6 +108,7 @@ func (e *DefaultEnvironment) doGetDefaultProfiles() {
 	})
 }
 
+// DefaultProfiles method returns the default profiles.
 func (e *DefaultEnvironment) DefaultProfiles() []string {
 	e.doGetDefaultProfiles()
 
@@ -112,6 +123,7 @@ func (e *DefaultEnvironment) DefaultProfiles() []string {
 	return profiles
 }
 
+// IsProfileActive method checks if a profile is active.
 func (e *DefaultEnvironment) IsProfileActive(profile string) bool {
 	defer e.mu.Unlock()
 	e.mu.Lock()
@@ -123,6 +135,7 @@ func (e *DefaultEnvironment) IsProfileActive(profile string) bool {
 	return false
 }
 
+// clearActiveProfiles method clears the active profiles.
 func (e *DefaultEnvironment) clearActiveProfiles() {
 	defer e.mu.Unlock()
 	e.mu.Lock()
@@ -132,6 +145,7 @@ func (e *DefaultEnvironment) clearActiveProfiles() {
 	}
 }
 
+// SetActiveProfiles method sets the active profiles.
 func (e *DefaultEnvironment) SetActiveProfiles(profiles ...string) error {
 	e.clearActiveProfiles()
 
@@ -149,6 +163,8 @@ func (e *DefaultEnvironment) SetActiveProfiles(profiles ...string) error {
 
 	return nil
 }
+
+// AddActiveProfile method adds active profiles.
 func (e *DefaultEnvironment) AddActiveProfile(profiles ...string) error {
 	for _, profile := range profiles {
 		err := e.validateProfile(profile)
@@ -170,6 +186,7 @@ func (e *DefaultEnvironment) AddActiveProfile(profiles ...string) error {
 	return nil
 }
 
+// clearDefaultProfiles method clears the default profiles.
 func (e *DefaultEnvironment) clearDefaultProfiles() {
 	defer e.mu.Unlock()
 	e.mu.Lock()
@@ -179,6 +196,7 @@ func (e *DefaultEnvironment) clearDefaultProfiles() {
 	}
 }
 
+// SetDefaultProfiles method sets the default profiles.
 func (e *DefaultEnvironment) SetDefaultProfiles(profiles ...string) error {
 	e.clearDefaultProfiles()
 
@@ -197,6 +215,7 @@ func (e *DefaultEnvironment) SetDefaultProfiles(profiles ...string) error {
 	return nil
 }
 
+// Merge method merges the current environment with a parent environment.
 func (e *DefaultEnvironment) Merge(parent Environment) {
 	parentPropertySources := parent.PropertySources().ToSlice()
 
@@ -226,10 +245,12 @@ func (e *DefaultEnvironment) Merge(parent Environment) {
 	}
 }
 
+// PropertySources method returns the property sources.
 func (e *DefaultEnvironment) PropertySources() *property.Sources {
 	return e.sources
 }
 
+// PropertyResolver method returns the property resolver.
 func (e *DefaultEnvironment) PropertyResolver() property.Resolver {
 	defer e.mu.Unlock()
 	e.mu.Lock()

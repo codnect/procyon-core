@@ -11,7 +11,7 @@ import (
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyExists(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName")
-	container := component.NewObjectContainer()
+	container := component.NewContainer()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": true,
@@ -21,24 +21,24 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyExists(t 
 	environment.PropertySources().AddLast(anyPropertySource)
 	container.Singletons().Register("environment", environment)
 
-	conditionContext := component.NewConditionContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), container)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueEvenIfPropertyDoesNotExistAndMatchIfMissingIsCalled(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").MatchIfMissing(true)
-	container := component.NewObjectContainer()
+	container := component.NewContainer()
 
 	environment := runtime.NewDefaultEnvironment()
 	container.Singletons().Register("environment", environment)
 
-	conditionContext := component.NewConditionContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), container)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueEqualsToGivenValue(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").HavingValue("anyPropertyValue")
-	container := component.NewObjectContainer()
+	container := component.NewContainer()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": "anyPropertyValue",
@@ -48,13 +48,13 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueEqua
 	environment.PropertySources().AddLast(anyPropertySource)
 	container.Singletons().Register("environment", environment)
 
-	conditionContext := component.NewConditionContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), container)
 	assert.True(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueDoesNotEqualToGivenValue(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName").HavingValue("anotherPropertyValue")
-	container := component.NewObjectContainer()
+	container := component.NewContainer()
 
 	anyPropertySource := property.NewMapSource("anyPropertySource", map[string]interface{}{
 		"anyPropertyName": "anyPropertyValue",
@@ -64,14 +64,14 @@ func TestOnPropertyCondition_MatchesConditionShouldReturnTrueIfPropertyValueDoes
 	environment.PropertySources().AddLast(anyPropertySource)
 	container.Singletons().Register("environment", environment)
 
-	conditionContext := component.NewConditionContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), container)
 	assert.False(t, onPropertyCondition.MatchesCondition(conditionContext))
 }
 
 func TestOnPropertyCondition_MatchesConditionShouldReturnFalseIfEnvironmentObjectDoesNotExist(t *testing.T) {
 	onPropertyCondition := OnProperty("anyPropertyName")
-	container := component.NewObjectContainer()
+	container := component.NewContainer()
 
-	conditionContext := component.NewConditionContext(context.Background(), container)
+	conditionContext := NewContext(context.Background(), container)
 	assert.False(t, onPropertyCondition.MatchesCondition(conditionContext))
 }

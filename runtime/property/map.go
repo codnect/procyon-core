@@ -5,12 +5,14 @@ import (
 	"strings"
 )
 
+// MapSource struct represents a source of properties that are stored in a map.
 type MapSource struct {
 	name   string
-	source map[string]interface{}
+	source map[string]any
 }
 
-func NewMapSource(name string, source map[string]interface{}) *MapSource {
+// NewMapSource function creates a new MapSource with the given name and key-value pair map.
+func NewMapSource(name string, source map[string]any) *MapSource {
 	if strings.TrimSpace(name) == "" {
 		panic("cannot create map source with empty or blank name")
 	}
@@ -25,14 +27,17 @@ func NewMapSource(name string, source map[string]interface{}) *MapSource {
 	}
 }
 
+// Name method returns the name of the source.
 func (m *MapSource) Name() string {
 	return m.name
 }
 
+// Source method returns the source.
 func (m *MapSource) Source() any {
 	return m.source
 }
 
+// ContainsProperty checks if the given property name exists in the source.
 func (m *MapSource) ContainsProperty(name string) bool {
 	if _, exists := m.source[name]; exists {
 		return true
@@ -41,6 +46,8 @@ func (m *MapSource) ContainsProperty(name string) bool {
 	return false
 }
 
+// Property returns the value of the given property name from the source.
+// If the property does not exist, it returns false.
 func (m *MapSource) Property(name string) (any, bool) {
 	if value, exists := m.source[name]; exists {
 		return value, true
@@ -49,6 +56,8 @@ func (m *MapSource) Property(name string) (any, bool) {
 	return nil, false
 }
 
+// PropertyOrDefault returns the value of the given property name from the source.
+// If the property does not exist, it returns the default value.
 func (m *MapSource) PropertyOrDefault(name string, defaultValue any) any {
 	value, exists := m.Property(name)
 	if !exists {
@@ -58,6 +67,7 @@ func (m *MapSource) PropertyOrDefault(name string, defaultValue any) any {
 	return value
 }
 
+// PropertyNames returns the property names in the source.
 func (m *MapSource) PropertyNames() []string {
 	names := make([]string, 0)
 
@@ -68,6 +78,8 @@ func (m *MapSource) PropertyNames() []string {
 	return names
 }
 
+// flatMap function flattens a map that contains nested maps or slices.
+// It returns a new map where each key is a path to a nested property.
 func flatMap(m map[string]interface{}) map[string]interface{} {
 	flattenMap := map[string]interface{}{}
 

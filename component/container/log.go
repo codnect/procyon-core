@@ -1,4 +1,4 @@
-package component
+package container
 
 import "codnect.io/logy"
 

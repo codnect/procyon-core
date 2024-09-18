@@ -1,20 +1,31 @@
 package component
 
-import "context"
+import (
+	"codnect.io/procyon-core/component/condition"
+	"codnect.io/procyon-core/component/container"
+	"context"
+)
 
-type DefinitionLoader struct {
-	container Container
-	evaluator ConditionEvaluator
+// Loader is a struct that represents a component loader.
+// It uses a container to register components and an evaluator to evaluate conditions.
+type Loader struct {
+	container container.Container
+	evaluator condition.Evaluator
 }
 
-func NewDefinitionLoader(container Container) *DefinitionLoader {
-	return &DefinitionLoader{
+// NewLoader function creates a new Loader instance with the provided container.
+func NewLoader(container container.Container) *Loader {
+	return &Loader{
 		container: container,
-		evaluator: NewConditionEvaluator(container),
+		evaluator: condition.NewEvaluator(container),
 	}
 }
 
-func (l *DefinitionLoader) LoadDefinitions(ctx context.Context, components []*Component) error {
+// LoadComponents method loads components into the container.
+// It evaluates the conditions of each component and registers the component if the conditions are met.
+// If the conditions are not met, the component is skipped.
+// The method returns an error if the registration of a component fails.
+func (l *Loader) LoadComponents(ctx context.Context, components []*Component) error {
 	skippedComponents := make([]*Component, 0)
 
 	for _, component := range components {
@@ -33,5 +44,5 @@ func (l *DefinitionLoader) LoadDefinitions(ctx context.Context, components []*Co
 		return nil
 	}
 
-	return l.LoadDefinitions(ctx, skippedComponents)
+	return l.LoadComponents(ctx, skippedComponents)
 }

@@ -1,4 +1,4 @@
-package component
+package container
 
 import (
 	"codnect.io/procyon-core/component/filter"
@@ -19,19 +19,15 @@ type Container interface {
 	IsPrototype(name string) bool
 	Definitions() DefinitionRegistry
 	Singletons() SingletonRegistry
-	RegisterScope(name string, scope Scope) error
-	ScopeNames() []string
-	FindScope(name string) (Scope, error)
+	Scopes() ScopeRegistry
 	AddObjectProcessor(processor ObjectProcessor) error
 	ObjectProcessorCount() int
 }
 
-type ObjectContainer struct {
-	definitions DefinitionRegistry
-	singletons  SingletonRegistry
-
-	scopes   map[string]Scope
-	muScopes sync.RWMutex
+type defaultContainer struct {
+	definitions *objectDefinitionRegistry
+	singletons  *singletonObjectRegistry
+	scopes      *simpleScopeRegistry
 
 	processors       []ObjectProcessor
 	typesOfProcessor map[string]struct{}
@@ -41,27 +37,29 @@ type ObjectContainer struct {
 	mu      sync.RWMutex
 }
 
-func NewObjectContainer() *ObjectContainer {
-	return &ObjectContainer{
-		definitions:      NewObjectDefinitionRegistry(),
-		singletons:       NewSingletonObjectRegistry(),
-		scopes:           make(map[string]Scope),
+// New function creates a new default container.
+func New() Container {
+	return &defaultContainer{
+		definitions:      newObjectDefinitionRegistry(),
+		singletons:       newSingletonObjectRegistry(),
+		scopes:           newSimpleScopeRegistry(),
 		processors:       make([]ObjectProcessor, 0),
 		typesOfProcessor: map[string]struct{}{},
 	}
 }
 
-func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filter) (any, error) {
+// GetObject method gets an object from the container that matches the provided filters.
+func (c *defaultContainer) GetObject(ctx context.Context, filters ...filter.Filter) (any, error) {
 	if len(filters) == 0 {
-		return nil, errors.New("at least one filter must be used")
+		return nil, ErrNoFilterProvided
 	}
 
-	ctx = contextWithHolder(ctx)
+	ctx = withObjectCreationState(ctx)
 
 	candidate, err := c.Singletons().Find(filters...)
 	if err == nil {
 		return candidate, nil
-	} else if _, ok := err.(*ObjectNotFoundError); !ok {
+	} else if !errors.Is(err, ErrObjectNotFound) {
 		return nil, err
 	}
 
@@ -87,14 +85,14 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 
 		return object, err
 	} else if definition.IsPrototype() {
-		prototypeHolder := holderFromContext(ctx)
-		err = prototypeHolder.beforeCreation(objectName)
+		prototypeHolder := objectCreationStateFromContext(ctx)
+		err = prototypeHolder.putToPreparation(objectName)
 
 		if err != nil {
 			return nil, err
 		}
 
-		defer prototypeHolder.afterCreation(objectName)
+		defer prototypeHolder.removeFromPreparation(objectName)
 		return c.createObject(ctx, definition, nil)
 	}
 
@@ -103,26 +101,27 @@ func (c *ObjectContainer) GetObject(ctx context.Context, filters ...filter.Filte
 	}
 
 	var scope Scope
-	scope, err = c.FindScope(definition.Scope())
+	scope, err = c.scopes.Find(definition.Scope())
 
 	if err != nil {
 		return nil, err
 	}
 
 	return scope.GetObject(ctx, objectName, func(ctx context.Context) (any, error) {
-		scopeHolder := holderFromContext(ctx)
-		err = scopeHolder.beforeCreation(objectName)
+		scopeHolder := objectCreationStateFromContext(ctx)
+		err = scopeHolder.putToPreparation(objectName)
 
 		if err != nil {
 			return nil, err
 		}
 
-		defer scopeHolder.afterCreation(objectName)
+		defer scopeHolder.removeFromPreparation(objectName)
 		return c.createObject(ctx, definition, nil)
 	})
 }
 
-func (c *ObjectContainer) ListObjects(ctx context.Context, filters ...filter.Filter) []any {
+// ListObjects method lists all objects in the container that match the provided filters.
+func (c *defaultContainer) ListObjects(ctx context.Context, filters ...filter.Filter) []any {
 	objectList := make([]any, 0)
 	singletonNames := c.singletons.Names()
 	objectList = append(objectList, c.singletons.List(filters...)...)
@@ -142,71 +141,40 @@ func (c *ObjectContainer) ListObjects(ctx context.Context, filters ...filter.Fil
 	return objectList
 }
 
-func (c *ObjectContainer) ContainsObject(name string) bool {
+// ContainsObject method checks if an object exists in the container.
+func (c *defaultContainer) ContainsObject(name string) bool {
 	return c.singletons.Contains(name)
 }
 
-func (c *ObjectContainer) IsSingleton(name string) bool {
+// IsSingleton method checks if an object is a singleton.
+func (c *defaultContainer) IsSingleton(name string) bool {
 	definition, ok := c.definitions.FindFirst(filter.ByName(name))
 	return ok && definition.IsSingleton()
 }
 
-func (c *ObjectContainer) IsPrototype(name string) bool {
+// IsPrototype method checks if an object is a prototype.
+func (c *defaultContainer) IsPrototype(name string) bool {
 	definition, ok := c.definitions.FindFirst(filter.ByName(name))
 	return ok && definition.IsPrototype()
 }
 
-func (c *ObjectContainer) Definitions() DefinitionRegistry {
+// Definitions method returns the definition registry of the container.
+func (c *defaultContainer) Definitions() DefinitionRegistry {
 	return c.definitions
 }
 
-func (c *ObjectContainer) Singletons() SingletonRegistry {
+// Singletons method returns the singleton registry of the container.
+func (c *defaultContainer) Singletons() SingletonRegistry {
 	return c.singletons
 }
 
-func (c *ObjectContainer) RegisterScope(name string, scope Scope) error {
-	if strings.TrimSpace(name) == "" {
-		panic("cannot register scope with empty or blank name")
-	}
-
-	if scope == nil {
-		panic("nil scope")
-	}
-
-	if SingletonScope != name && PrototypeScope != name {
-		defer c.muScopes.Unlock()
-		c.muScopes.Lock()
-		c.scopes[name] = scope
-		return nil
-	}
-
-	return errors.New("cannot replace 'singleton' and 'prototype' scopes")
-
+// Scopes method returns the scope registry of the container.
+func (c *defaultContainer) Scopes() ScopeRegistry {
+	return c.scopes
 }
 
-func (c *ObjectContainer) ScopeNames() []string {
-	defer c.muScopes.Unlock()
-	c.muScopes.Lock()
-
-	scopeNames := make([]string, 0)
-	for scopeName := range c.scopes {
-		scopeNames = append(scopeNames, scopeName)
-	}
-
-	return scopeNames
-}
-
-func (c *ObjectContainer) FindScope(name string) (Scope, error) {
-	defer c.muScopes.Unlock()
-	c.muScopes.Lock()
-	if scope, ok := c.scopes[name]; ok {
-		return scope, nil
-	}
-
-	return nil, fmt.Errorf("no scope registered for scope name '%s'", name)
-}
-
-func (c *ObjectContainer) AddObjectProcessor(processor ObjectProcessor) error {
+// AddObjectProcessor method adds an object processor to the container.
+func (c *defaultContainer) AddObjectProcessor(processor ObjectProcessor) error {
 	if processor == nil {
 		return errors.New("nil processor")
 	}
@@ -226,13 +194,15 @@ func (c *ObjectContainer) AddObjectProcessor(processor ObjectProcessor) error {
 	return nil
 }
 
-func (c *ObjectContainer) ObjectProcessorCount() int {
+// ObjectProcessorCount method returns the number of object processors in the container.
+func (c *defaultContainer) ObjectProcessorCount() int {
 	defer c.postProcessorMu.Unlock()
 	c.postProcessorMu.Lock()
 	return len(c.processors)
 }
 
-func (c *ObjectContainer) createObject(ctx context.Context, definition *Definition, args []any) (object any, err error) {
+// createObject method creates an object based on a definition and arguments.
+func (c *defaultContainer) createObject(ctx context.Context, definition *Definition, args []any) (object any, err error) {
 	if ctx == nil {
 		return nil, errors.New("nil context")
 	}
@@ -241,19 +211,19 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 		return nil, errors.New("nil definition")
 	}
 
-	constructor := definition.Constructor()
-	argsCount := len(constructor.Arguments())
+	objectConstructor := definition.Constructor()
+	argsCount := len(objectConstructor.Arguments())
 
 	if argsCount != 0 && len(args) == 0 {
 		var resolvedArguments []any
-		resolvedArguments, err = c.resolveArguments(ctx, constructor.Arguments())
+		resolvedArguments, err = c.resolveArguments(ctx, objectConstructor.Arguments())
 
 		if err != nil {
 			return nil, err
 		}
 
 		var results []any
-		results, err = constructor.Invoke(resolvedArguments...)
+		results, err = objectConstructor.Invoke(resolvedArguments...)
 
 		if err != nil {
 			return nil, err
@@ -262,13 +232,13 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 		resultType := reflect.TypeOf(results[0])
 		resultValue := reflect.ValueOf(results[0])
 		if (resultType.Kind() == reflect.Pointer || resultType.Kind() == reflect.Interface) && resultValue.IsZero() {
-			return nil, fmt.Errorf("constructor function '%s' returns nil", constructor.Name())
+			return nil, fmt.Errorf("Constructor function '%s' returns nil", objectConstructor.Name())
 		}
 
 		object = results[0]
 	} else if (argsCount == 0 && len(args) == 0) || (len(args) != 0 && argsCount == len(args)) {
 		var results []any
-		results, err = constructor.Invoke(args...)
+		results, err = objectConstructor.Invoke(args...)
 
 		if err != nil {
 			return nil, err
@@ -278,7 +248,7 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 		resultValue := reflect.ValueOf(results[0])
 
 		if (resultType.Kind() == reflect.Pointer || resultType.Kind() == reflect.Interface) && resultValue.IsZero() {
-			return nil, fmt.Errorf("constructor function '%s' returns nil", constructor.Name())
+			return nil, fmt.Errorf("Constructor function '%s' returns nil", objectConstructor.Name())
 		}
 
 		object = results[0]
@@ -289,7 +259,8 @@ func (c *ObjectContainer) createObject(ctx context.Context, definition *Definiti
 	return c.initialize(ctx, object)
 }
 
-func (c *ObjectContainer) resolveArguments(ctx context.Context, args []ConstructorArgument) ([]any, error) {
+// resolveArguments method resolves the arguments for a constructor.
+func (c *defaultContainer) resolveArguments(ctx context.Context, args []ConstructorArgument) ([]any, error) {
 	arguments := make([]any, 0)
 
 	for _, arg := range args {
@@ -329,7 +300,7 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []Construct
 		if err != nil {
 			argKind := arg.Type().Kind()
 
-			if _, ok := err.(*ObjectNotFoundError); ok && argKind != reflect.Pointer && argKind != reflect.Interface {
+			if errors.Is(err, ErrObjectNotFound) && argKind != reflect.Pointer && argKind != reflect.Interface {
 				var val reflect.Value
 				val = reflect.New(arg.Type())
 
@@ -351,7 +322,8 @@ func (c *ObjectContainer) resolveArguments(ctx context.Context, args []Construct
 	return arguments, nil
 }
 
-func (c *ObjectContainer) initialize(ctx context.Context, object any) (any, error) {
+// initialize method initializes an object.
+func (c *defaultContainer) initialize(ctx context.Context, object any) (any, error) {
 	result, err := c.applyProcessorsBeforeInit(ctx, object)
 	if err != nil {
 		return nil, err
@@ -373,7 +345,8 @@ func (c *ObjectContainer) initialize(ctx context.Context, object any) (any, erro
 	return result, nil
 }
 
-func (c *ObjectContainer) applyProcessorsBeforeInit(ctx context.Context, object any) (any, error) {
+// applyProcessorsBeforeInit method applies the object processors before initialization.
+func (c *defaultContainer) applyProcessorsBeforeInit(ctx context.Context, object any) (any, error) {
 	for _, processor := range c.processors {
 		result, err := processor.ProcessBeforeInit(ctx, object)
 
@@ -391,7 +364,8 @@ func (c *ObjectContainer) applyProcessorsBeforeInit(ctx context.Context, object 
 	return object, nil
 }
 
-func (c *ObjectContainer) applyProcessorsAfterInit(ctx context.Context, object any) (any, error) {
+// applyProcessorsAfterInit method applies the object processors after initialization.
+func (c *defaultContainer) applyProcessorsAfterInit(ctx context.Context, object any) (any, error) {
 	for _, processor := range c.processors {
 		result, err := processor.ProcessAfterInit(ctx, object)
 
@@ -409,7 +383,8 @@ func (c *ObjectContainer) applyProcessorsAfterInit(ctx context.Context, object a
 	return object, nil
 }
 
-func (c *ObjectContainer) loadObjectProcessors(ctx context.Context) error {
+// loadObjectProcessors method loads the object processors.
+func (c *defaultContainer) loadObjectProcessors(ctx context.Context) error {
 
 	/*
 		postProcessors := c.Definitions().List(filter.ByTypeOf[component.ObjectProcessor]())

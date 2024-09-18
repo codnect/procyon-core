@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// Resolver interface provides methods for resolving properties.
 type Resolver interface {
 	ContainsProperty(name string) bool
 	Property(name string) (any, bool)
@@ -12,20 +13,29 @@ type Resolver interface {
 	ResolveRequiredPlaceholders(text string) (string, error)
 }
 
+// SourcesResolver is an implementation of the Resolver interface.
+// It resolves properties from the given sources.
 type SourcesResolver struct {
 	sources *Sources
 }
 
+// NewSourcesResolver creates a new SourcesResolver with the given sources.
 func NewSourcesResolver(sources *Sources) *SourcesResolver {
+	if sources == nil {
+		panic("nil sources")
+	}
+
 	return &SourcesResolver{
 		sources: sources,
 	}
 }
 
+// ContainsProperty checks if the given property name exists in the sources.
 func (r *SourcesResolver) ContainsProperty(name string) bool {
 	return r.sources.Contains(name)
 }
 
+// Property returns the value of the given property name from the sources.
 func (r *SourcesResolver) Property(name string) (any, bool) {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
@@ -36,6 +46,8 @@ func (r *SourcesResolver) Property(name string) (any, bool) {
 	return nil, false
 }
 
+// PropertyOrDefault returns the value of the given property name from the sources.
+// If the property does not exist, it returns the default value.
 func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue any) any {
 	for _, source := range r.sources.ToSlice() {
 		if value, ok := source.Property(name); ok {
@@ -46,15 +58,21 @@ func (r *SourcesResolver) PropertyOrDefault(name string, defaultValue any) any {
 	return defaultValue
 }
 
+// ResolvePlaceholders resolves placeholders in the given text.
+// If a placeholder cannot be resolved, it continues to resolve other placeholders.
 func (r *SourcesResolver) ResolvePlaceholders(s string) string {
 	result, _ := r.resolveRequiredPlaceHolders(s, true)
 	return result
 }
 
+// ResolveRequiredPlaceholders resolves placeholders in the given text.
+// If a placeholder cannot be resolved, it returns an error.
 func (r *SourcesResolver) ResolveRequiredPlaceholders(s string) (string, error) {
 	return r.resolveRequiredPlaceHolders(s, false)
 }
 
+// resolveRequiredPlaceHolders resolves placeholders in the given text.
+// If continueOnError is true, it continues to resolve placeholders even if a placeholder cannot be resolved.
 func (r *SourcesResolver) resolveRequiredPlaceHolders(s string, continueOnError bool) (string, error) {
 	var buf []byte
 

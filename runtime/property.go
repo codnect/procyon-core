@@ -6,27 +6,33 @@ import (
 )
 
 const (
+	// NonOptionArgs represents the non-option arguments.
 	NonOptionArgs = "nonOptionArgs"
 )
 
+// ArgumentsSource struct represents a source of arguments.
 type ArgumentsSource struct {
 	args *Arguments
 }
 
+// NewArgumentsSource function creates a new ArgumentsSource with the given arguments.
 func NewArgumentsSource(args *Arguments) *ArgumentsSource {
 	return &ArgumentsSource{
 		args: args,
 	}
 }
 
+// Name method returns the name of the source.
 func (s *ArgumentsSource) Name() string {
 	return "commandLineArgs"
 }
 
+// Source method returns the source of the arguments.
 func (s *ArgumentsSource) Source() any {
 	return s.args
 }
 
+// ContainsProperty method checks whether the argument with the given name exists.
 func (s *ArgumentsSource) ContainsProperty(name string) bool {
 	if NonOptionArgs == name {
 		return len(s.args.NonOptionArgs()) != 0
@@ -35,6 +41,7 @@ func (s *ArgumentsSource) ContainsProperty(name string) bool {
 	return s.args.ContainsOption(name)
 }
 
+// Property method returns the value of the argument with the given name.
 func (s *ArgumentsSource) Property(name string) (any, bool) {
 	if NonOptionArgs == name {
 		nonOptValues := s.args.NonOptionArgs()
@@ -55,6 +62,8 @@ func (s *ArgumentsSource) Property(name string) (any, bool) {
 	return nil, false
 }
 
+// PropertyOrDefault returns the value of the given argument name from the source.
+// If the argument does not exist, it returns the default value.
 func (s *ArgumentsSource) PropertyOrDefault(name string, defaultValue any) any {
 	val, ok := s.Property(name)
 	if !ok {
@@ -64,22 +73,27 @@ func (s *ArgumentsSource) PropertyOrDefault(name string, defaultValue any) any {
 	return val
 }
 
+// PropertyNames method returns the names of the arguments.
 func (s *ArgumentsSource) PropertyNames() []string {
 	return s.args.OptionNames()
 }
 
+// OptionValues method returns the values of the option argument with the given name.
 func (s *ArgumentsSource) OptionValues(name string) []string {
 	return s.args.OptionValues(name)
 }
 
+// NonOptionArgs method returns the non-option arguments.
 func (s *ArgumentsSource) NonOptionArgs() []string {
 	return s.args.NonOptionArgs()
 }
 
+// EnvironmentSource struct represents a source of environment properties.
 type EnvironmentSource struct {
 	variables map[string]string
 }
 
+// NewEnvironmentSource function creates a new EnvironmentSource.
 func NewEnvironmentSource() *EnvironmentSource {
 	source := &EnvironmentSource{
 		variables: make(map[string]string, 0),
@@ -98,10 +112,12 @@ func NewEnvironmentSource() *EnvironmentSource {
 	return source
 }
 
+// Name method returns the name of the source.
 func (s *EnvironmentSource) Name() string {
 	return "systemEnvironment"
 }
 
+// Source method returns the source of the environment properties.
 func (s *EnvironmentSource) Source() any {
 	copyOfVariables := make(map[string]string)
 	for key, value := range s.variables {
@@ -111,6 +127,7 @@ func (s *EnvironmentSource) Source() any {
 	return copyOfVariables
 }
 
+// Property method returns the value of the environment property with the given name.
 func (s *EnvironmentSource) Property(name string) (any, bool) {
 	propertyName, exists := s.checkPropertyName(strings.ToLower(name))
 
@@ -131,6 +148,8 @@ func (s *EnvironmentSource) Property(name string) (any, bool) {
 	return nil, false
 }
 
+// PropertyOrDefault returns the value of the given environment property name from the source.
+// If the environment property does not exist, it returns the default value.
 func (s *EnvironmentSource) PropertyOrDefault(name string, defaultValue any) any {
 	value, ok := s.Property(name)
 
@@ -141,6 +160,7 @@ func (s *EnvironmentSource) PropertyOrDefault(name string, defaultValue any) any
 	return value
 }
 
+// ContainsProperty method checks whether the environment property with the given name exists.
 func (s *EnvironmentSource) ContainsProperty(name string) bool {
 	_, exists := s.checkPropertyName(strings.ToUpper(name))
 	if exists {
@@ -155,6 +175,7 @@ func (s *EnvironmentSource) ContainsProperty(name string) bool {
 	return false
 }
 
+// PropertyNames method returns the names of the environment properties.
 func (s *EnvironmentSource) PropertyNames() []string {
 	keys := make([]string, 0, len(s.variables))
 
@@ -165,6 +186,7 @@ func (s *EnvironmentSource) PropertyNames() []string {
 	return keys
 }
 
+// checkPropertyName method checks the given property name in the environment variables.
 func (s *EnvironmentSource) checkPropertyName(name string) (string, bool) {
 	if s.contains(name) {
 		return name, true
@@ -191,6 +213,7 @@ func (s *EnvironmentSource) checkPropertyName(name string) (string, bool) {
 	return "", false
 }
 
+// contains method checks whether the environment property with the given name exists.
 func (s *EnvironmentSource) contains(name string) bool {
 	if _, ok := s.variables[name]; ok {
 		return true

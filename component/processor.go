@@ -1,22 +1,12 @@
 package component
 
-import (
-	"context"
-	"fmt"
-	"reflect"
-)
-
-type ObjectProcessor interface {
-	ProcessBeforeInit(ctx context.Context, object any) (any, error)
-	ProcessAfterInit(ctx context.Context, object any) (any, error)
-}
-
+/*
 type processorChecker struct {
-	container      *ObjectContainer
+	container      *Container
 	processorCount int
 }
 
-func newProcessorChecker(container *ObjectContainer, processorCount int) processorChecker {
+func newProcessorChecker(container *Container, processorCount int) processorChecker {
 	return processorChecker{
 		container:      container,
 		processorCount: processorCount,
@@ -28,7 +18,7 @@ func (c processorChecker) ProcessBeforeInit(ctx context.Context, object any) (an
 }
 
 func (c processorChecker) ProcessAfterInit(ctx context.Context, object any) (any, error) {
-	if _, ok := object.(ObjectProcessor); !ok && c.container.ObjectProcessorCount() < c.processorCount {
+	/*if _, ok := object.(ObjectProcessor); !ok && c.container.ObjectProcessorCount() < c.processorCount {
 		typ := reflect.TypeOf(object)
 		typeName := fmt.Sprintf("%s.%s", typ.PkgPath(), typ.Name())
 		log.I(ctx, "Component '{}' is not eligible for ObjectProcessor", typeName)
@@ -36,3 +26,4 @@ func (c processorChecker) ProcessAfterInit(ctx context.Context, object any) (any
 
 	return object, nil
 }
+*/

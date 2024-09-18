@@ -1,22 +1,26 @@
 package condition
 
 import (
-	"codnect.io/procyon-core/component"
 	"codnect.io/procyon-core/component/filter"
 	"codnect.io/procyon-core/runtime"
 )
 
+// OnProfileCondition struct represents a condition that checks if a specific profile is active.
 type OnProfileCondition struct {
-	profiles []string
+	profiles []string // The profiles to check.
 }
 
+// OnProfile function creates a new OnProfileCondition.
 func OnProfile(profiles ...string) *OnProfileCondition {
 	return &OnProfileCondition{
 		profiles: profiles,
 	}
 }
 
-func (c *OnProfileCondition) MatchesCondition(ctx component.ConditionContext) bool {
+// MatchesCondition method checks if the profiles are active.
+// It retrieves the runtime environment from the container and checks if each profile in the list is active.
+// If all profiles are active, it returns true. If any profile is not active, it returns false.
+func (c *OnProfileCondition) MatchesCondition(ctx Context) bool {
 	container := ctx.Container()
 	if container == nil {
 		return false

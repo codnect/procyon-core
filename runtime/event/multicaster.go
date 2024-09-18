@@ -6,6 +6,8 @@ import (
 	"sync"
 )
 
+// Multicaster is an interface that represents an event multicaster
+// that can manage a number of listeners and publish events to them.
 type Multicaster interface {
 	AddEventListener(listener Listener) error
 	MulticastEvent(ctx context.Context, event ApplicationEvent) error
@@ -14,17 +16,20 @@ type Multicaster interface {
 	RemoveAllEventListeners()
 }
 
+// SimpleMulticaster struct is a simple implementation of the Multicaster interface.
 type SimpleMulticaster struct {
 	listeners []Listener
 	mu        sync.RWMutex
 }
 
+// NewSimpleMulticaster function creates a new SimpleMulticaster.
 func NewSimpleMulticaster() *SimpleMulticaster {
 	return &SimpleMulticaster{
 		listeners: make([]Listener, 0),
 	}
 }
 
+// AddEventListener method adds an event listener to the multicaster.
 func (m *SimpleMulticaster) AddEventListener(listener Listener) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
@@ -37,6 +42,7 @@ func (m *SimpleMulticaster) AddEventListener(listener Listener) error {
 	return nil
 }
 
+// MulticastEvent method multicasts an event to all listeners that support the event.
 func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event ApplicationEvent) error {
 	m.mu.Lock()
 	listeners := make([]Listener, len(m.listeners))
@@ -64,6 +70,7 @@ func (m *SimpleMulticaster) MulticastEvent(ctx context.Context, event Applicatio
 	return nil
 }
 
+// MulticastEventAsync method multicasts an event asynchronously to all listeners that support the event.
 func (m *SimpleMulticaster) MulticastEventAsync(ctx context.Context, event ApplicationEvent) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
@@ -90,6 +97,7 @@ func (m *SimpleMulticaster) MulticastEventAsync(ctx context.Context, event Appli
 	return nil
 }
 
+// RemoveEventListener method removes an event listener from the multicaster.
 func (m *SimpleMulticaster) RemoveEventListener(eventListener Listener) error {
 	defer m.mu.Unlock()
 	m.mu.Lock()
@@ -108,6 +116,7 @@ func (m *SimpleMulticaster) RemoveEventListener(eventListener Listener) error {
 	return nil
 }
 
+// RemoveAllEventListeners method removes all event listeners from the multicaster.
 func (m *SimpleMulticaster) RemoveAllEventListeners() {
 	defer m.mu.Unlock()
 	m.mu.Lock()
